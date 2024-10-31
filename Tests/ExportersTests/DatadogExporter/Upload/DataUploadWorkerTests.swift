@@ -6,9 +6,8 @@
 @testable import DatadogExporter
 import XCTest
 
-
 class DataUploadWorkerTests: XCTestCase {
-    @UniqueTemporaryDirectory private var temporaryDirectory: Directory
+    private let temporaryDirectory = obtainUniqueTemporaryDirectory()
 
     lazy var dateProvider = RelativeDateProvider(advancingBySeconds: 1)
     lazy var orchestrator = FilesOrchestrator(
@@ -38,9 +37,9 @@ class DataUploadWorkerTests: XCTestCase {
     // MARK: - Data Uploads
 
     func testItUploadsAllData() throws {
-#if os(watchOS)
-        throw XCTSkip("Implementation needs to be updated for watchOS to make this test pass")
-#endif
+        if #available(watchOS 3.0, *) {
+            throw XCTSkip("Implementation needs to be updated for watchOS to make this test pass")
+        }
 
         let server = ServerMock(delivery: .success(response: .mockResponseWith(statusCode: 200)))
         let dataUploader = DataUploader(
@@ -73,8 +72,7 @@ class DataUploadWorkerTests: XCTestCase {
         XCTAssertEqual(try temporaryDirectory.files().count, 0)
     }
 
-    func testGivenDataToUpload_whenUploadFinishesAndDoesNotNeedToBeRetried_thenDataIsDeleted() throws {
-        throw XCTSkip("unstable test skipped.")
+    func testGivenDataToUpload_whenUploadFinishesAndDoesNotNeedToBeRetried_thenDataIsDeleted() {
         let startUploadExpectation = self.expectation(description: "Upload has started")
 
         var mockDataUploader = DataUploaderMock(uploadStatus: .mockWith(needsRetry: false))
@@ -93,16 +91,14 @@ class DataUploadWorkerTests: XCTestCase {
             featureName: .mockAny()
         )
 
-        wait(for: [startUploadExpectation], timeout: 10)
+        wait(for: [startUploadExpectation], timeout: 0.5)
         worker.cancelSynchronously()
 
         // Then
         XCTAssertEqual(try temporaryDirectory.files().count, 0, "When upload finishes with `needsRetry: false`, data should be deleted")
     }
 
-    func testGivenDataToUpload_whenUploadFinishesAndNeedsToBeRetried_thenDataIsPreserved() throws {
-        throw XCTSkip("unstable test skipped.")
-
+    func testGivenDataToUpload_whenUploadFinishesAndNeedsToBeRetried_thenDataIsPreserved() {
         let startUploadExpectation = self.expectation(description: "Upload has started")
 
         var mockDataUploader = DataUploaderMock(uploadStatus: .mockWith(needsRetry: true))
@@ -121,7 +117,7 @@ class DataUploadWorkerTests: XCTestCase {
             featureName: .mockAny()
         )
 
-        wait(for: [startUploadExpectation], timeout: 10)
+        wait(for: [startUploadExpectation], timeout: 0.5)
         worker.cancelSynchronously()
 
         // Then
@@ -130,9 +126,7 @@ class DataUploadWorkerTests: XCTestCase {
 
     // MARK: - Upload Interval Changes
 
-    func testWhenThereIsNoBatch_thenIntervalIncreases() throws {
-      throw XCTSkip("unstable test skipped.")
-
+    func testWhenThereIsNoBatch_thenIntervalIncreases() {
         let delayChangeExpectation = expectation(description: "Upload delay is increased")
         let mockDelay = MockDelay { command in
             if case .increase = command {
@@ -160,17 +154,15 @@ class DataUploadWorkerTests: XCTestCase {
 
         // Then
         server.waitFor(requestsCompletion: 0)
-        waitForExpectations(timeout: 10, handler: nil)
+        waitForExpectations(timeout: 1, handler: nil)
         worker.cancelSynchronously()
     }
 
     func testWhenBatchFails_thenIntervalIncreases() throws {
-#if os(watchOS)
-        throw XCTSkip("Implementation needs to be updated for watchOS to make this test pass")
-#endif
+        if #available(watchOS 3.0, *) {
+            throw XCTSkip("Implementation needs to be updated for watchOS to make this test pass")
+        }
 
-        throw XCTSkip("unstable test skipped.")
-      
         let delayChangeExpectation = expectation(description: "Upload delay is increased")
         let mockDelay = MockDelay { command in
             if case .increase = command {
@@ -198,15 +190,14 @@ class DataUploadWorkerTests: XCTestCase {
 
         // Then
         server.waitFor(requestsCompletion: 1)
-        waitForExpectations(timeout: 10, handler: nil)
+        waitForExpectations(timeout: 1, handler: nil)
         worker.cancelSynchronously()
     }
 
     func testWhenBatchSucceeds_thenIntervalDecreases() throws {
-#if os(watchOS)
-        throw XCTSkip("Implementation needs to be updated for watchOS to make this test pass")
-#endif
-        throw XCTSkip("unstable test skipped.")
+        if #available(watchOS 3.0, *) {
+            throw XCTSkip("Implementation needs to be updated for watchOS to make this test pass")
+        }
 
         let delayChangeExpectation = expectation(description: "Upload delay is decreased")
         let mockDelay = MockDelay { command in
@@ -235,15 +226,13 @@ class DataUploadWorkerTests: XCTestCase {
 
         // Then
         server.waitFor(requestsCompletion: 1)
-        waitForExpectations(timeout: 10, handler: nil)
+        waitForExpectations(timeout: 2, handler: nil)
         worker.cancelSynchronously()
     }
 
     // MARK: - Tearing Down
 
-    func testWhenCancelled_itPerformsNoMoreUploads() throws {
-        throw XCTSkip("unstable test skipped.")
-
+    func testWhenCancelled_itPerformsNoMoreUploads() {
         // Given
         let server = ServerMock(delivery: .success(response: .mockResponseWith(statusCode: 200)))
         let dataUploader = DataUploader(
@@ -268,11 +257,9 @@ class DataUploadWorkerTests: XCTestCase {
     }
 
     func testItFlushesAllData() throws {
-#if os(watchOS)
-        throw XCTSkip("Implementation needs to be updated for watchOS to make this test pass")
-#endif
-
-      throw XCTSkip("unstable test skipped.")
+        if #available(watchOS 3.0, *) {
+            throw XCTSkip("Implementation needs to be updated for watchOS to make this test pass")
+        }
 
         let server = ServerMock(delivery: .success(response: .mockResponseWith(statusCode: 200)))
         let dataUploader = DataUploader(

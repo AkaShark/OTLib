@@ -20,7 +20,7 @@ public enum PrometheusExporterExtensions {
     static let prometheusHistogramBucketPostFix = "_bucket"
     static let prometheusHistogramLeLabelName = "le"
 
-    public static func writeMetricsCollection(exporter: PrometheusExporter) -> String {
+    static func writeMetricsCollection(exporter: PrometheusExporter) -> String {
         var output = ""
         let metrics = exporter.getAndClearMetrics()
         let now = String(Int64((Date().timeIntervalSince1970 * 1000.0).rounded()))

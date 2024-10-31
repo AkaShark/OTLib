@@ -8,11 +8,11 @@ import OpenTelemetryApi
 
 public class OpenTelemetrySwiftMetrics: MetricsFactory {
     
-    internal let meter: OpenTelemetryApi.Meter
+    internal let meter: Meter
     internal var metrics = [MetricKey: SwiftMetric]()
     internal let lock = Lock()
     
-    public init(meter: OpenTelemetryApi.Meter) {
+    public init(meter: Meter) {
         self.meter = meter
     }
     

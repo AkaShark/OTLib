@@ -9,8 +9,7 @@ import OpenTelemetrySdk
 // a persistence exporter decorator for `SpanData`.
 // specialization of `PersistenceExporterDecorator` for `SpanExporter`.
 public class PersistenceSpanExporterDecorator: SpanExporter {
-
-  struct SpanDecoratedExporter: DecoratedExporter {
+    struct SpanDecoratedExporter: DecoratedExporter {
         typealias SignalType = SpanData
         
         private let spanExporter: SpanExporter
@@ -19,7 +18,7 @@ public class PersistenceSpanExporterDecorator: SpanExporter {
             self.spanExporter = spanExporter
         }
 
-      func export(values: [SpanData]) -> DataExportStatus {
+        func export(values: [SpanData]) -> DataExportStatus {
             _ = spanExporter.export(spans: values)
             return DataExportStatus(needsRetry: false)
         }
@@ -43,7 +42,7 @@ public class PersistenceSpanExporterDecorator: SpanExporter {
                 performancePreset: performancePreset)
     }
     
-  public func export(spans: [SpanData], explicitTimeout: TimeInterval?) -> SpanExporterResultCode {
+    public func export(spans: [SpanData]) -> SpanExporterResultCode {
         do {
             try persistenceExporter.export(values: spans)
             
@@ -53,13 +52,13 @@ public class PersistenceSpanExporterDecorator: SpanExporter {
         }
     }
     
-  public func flush(explicitTimeout: TimeInterval?) -> SpanExporterResultCode {
+    public func flush() -> SpanExporterResultCode {
         persistenceExporter.flush()
-        return spanExporter.flush(explicitTimeout: explicitTimeout)
+        return spanExporter.flush()
     }
     
-    public func shutdown(explicitTimeout: TimeInterval?) {
+    public func shutdown() {
         persistenceExporter.flush()
-        spanExporter.shutdown(explicitTimeout: explicitTimeout)
+        spanExporter.shutdown()
     }
 }

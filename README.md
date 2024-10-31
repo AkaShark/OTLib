@@ -1,35 +1,36 @@
-# <img src="https://opentelemetry.io/img/logos/opentelemetry-logo-nav.png" alt="OpenTelemetry Icon" width="45" height=""> opentelemetry-swift
+# opentelemetry-swift
 
 [![CI](https://github.com/open-telemetry/opentelemetry-swift/actions/workflows/BuildAndTest.yml/badge.svg)](https://github.com/open-telemetry/opentelemetry-swift/actions/workflows/BuildAndTest.yml?query=branch%3Amain+)
 [![codecov](https://codecov.io/gh/open-telemetry/opentelemetry-swift/branch/master/graph/badge.svg)](https://codecov.io/gh/open-telemetry/opentelemetry-swift)
 
-## About
 
-The repository contains the Swift [OpenTelemetry](https://opentelemetry.io/) client
 
-## Getting Started
+A swift [OpenTelemetry](https://opentelemetry.io/) client
+
+## Installation
 
 This package includes several libraries. The `OpenTelemetryApi` library includes protocols and no-op implementations that comprise the OpenTelemetry API following the [specification](https://github.com/open-telemetry/opentelemetry-specification). The `OpenTelemetrySdk` library is the reference implementation of the API.
 
 Libraries that produce telemetry data should only depend on `OpenTelemetryApi`, and defer the choice of the SDK to the application developer. Applications may depend on `OpenTelemetrySdk` or another package that implements the API.
 
-### Adding the dependency
+
+#### Adding the dependency
 
 opentelemetry-swift is designed for Swift 5. To depend on the  opentelemetry-swift package, you need to declare your dependency in your `Package.swift`:
 
-```swift
+```
 .package(url: "https://github.com/open-telemetry/opentelemetry-swift", from: "1.0.0"),
 ```
 
 and to your application/library target, add `OpenTelemetryApi` or  `OpenTelemetrySdk`to your `dependencies`, e.g. like this:
 
-```swift
+```
 .target(name: "ExampleTelemetryProducerApp", dependencies: ["OpenTelemetryApi"]),
 ```
 
-or
+or 
 
-```swift
+```
 .target(name: "ExampleApp", dependencies: ["OpenTelemetrySdk"]),
 ```
 
@@ -37,8 +38,8 @@ or
 
 Official documentation for the library can be found in the official opentelemetry [documentation  page](https://opentelemetry.io/docs/instrumentation/swift/), including:
 
-* Documentation about installation and [manual instrumentation](https://opentelemetry.io/docs/instrumentation/swift/manual/)
-
+ * Documentation about installation and [manual instrumentation](https://opentelemetry.io/docs/instrumentation/swift/manual/)
+   
 * [Libraries](https://opentelemetry.io/docs/instrumentation/swift/libraries/) that provide automatic instrumentation
 
 ## Current status
@@ -54,69 +55,32 @@ Metrics is implemented using an outdated spec, is fully functional but will chan
 ### Supported exporters and importers
 
 #### Traces
-
 * Exporters: Stdout, Jaeger, Zipkin, Datadog and OpenTelemetry (OTLP) collector
 * Importers: OpenTracingShim
 
-#### Metrics
-
+#### Metrics 
 * Exporters: Prometheus, Datadog, and OpenTelemetry (OTLP) collector
 * Importers: SwiftMetricsShim
 
-#### Logs
-
+#### Logs 
 * Exporters: OpenTelemetry (OTLP) collector
 
 > **_NOTE:_** OTLP exporters are supported both in GRPC and HTTP, only GRPC is production ready, HTTP is still experimental
 
 ### Instrumentation libraries
+* URLSession
+* NetworkStatus
+* SDKResourceExtension
+* SignPostIntegration
 
-* `URLSession`
-* `NetworkStatus`
-* `SDKResourceExtension`
-* `SignPostIntegration`
 
 ## Examples
 
 The package includes some example projects with basic functionality:
 
-* `Datadog Sample` -  Shows the Datadog exporter used with a Simple Exporter, showing how to configure for sending.
-* `Logging Tracer` -  Simple api implementation of a Tracer that logs every api call
-* `Network Tracer` -  Shows how to use the `URLSessionInstrumentation` instrumentation in your application
-* `Simple Exporter` - Shows the Jaeger an Stdout exporters in action using a MultiSpanExporter. Can be easily modified for other exporters
-* `Prometheus Sample` - Shows the Prometheus exporter reporting metrics to a Prometheus instance
-* `OTLP Exporter` - Shows the OTLP exporter reporting traces to Zipkin and metrics to a Prometheus via the otel-collector
-
-## Contributing
-We'd love your help!. Use tags [help wanted][help wanted] and
-[good first issue][good first issues] to get started with the project. 
-For an overview of how to contribute, see the contributing guide in [CONTRIBUTING.md](CONTRIBUTING.md).
-
-We have a weekly SIG meeting! See the [community page](https://github.com/open-telemetry/community#swift-sdk) for meeting details and notes.
-
-We are also available in the [#otel-swift](https://cloud-native.slack.com/archives/C01NCHR19SB) channel in the [CNCF slack](https://slack.cncf.io/). Please join us there for OTel Swift discussions.
-
-### Community members
-
-#### Maintainers ([@open-telemetry/swift-maintainers](https://github.com/orgs/open-telemetry/teams/swift-maintainers))
-
-- [Ignacio Bonaforte](https://github.com/nachob), Independent
-- [Bryce Buchanan](https://github.com/bryce-b), Elastic
-
-*Find more about the maintainer role in the [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#maintainer).*
-
-#### Approvers ([@open-telemetry/swift-approvers](https://github.com/orgs/open-telemetry/teams/swift-approvers))
-
-- [Vinod Vidiyer](https://github.com/vvydier)), Independent
-- [Austin Emmons](https://github.com/atreat), Embrace
-
-*Find more about the approver role in the [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#approver).*
-
-#### Triager ([@open-telemetry/swift-triagers](https://github.com/orgs/open-telemetry/teams/swift-triagers))
-
-- [Alolita Sharma](https://github.com/alolita), Apple
-
-*Find more about the triager role in the [community repository](https://github.com/open-telemetry/community/blob/main/community-membership.md#triager).*
-
-
-# OTLib
+- `Datadog Sample` -  Shows the Datadog exporter used with a Simple Exporter, showing how to configure for sending.
+- `Logging Tracer` -  Simple api implementation of a Tracer that logs every api call
+- `Network Tracer` -  Shows how to use the `URLSessionInstrumentation` instrumentation in your application 
+- `Simple Exporter` - Shows the Jaeger an Stdout exporters in action using a MultiSpanExporter. Can be easily modified for other exporters
+- `Prometheus Sample` - Shows the Prometheus exporter reporting metrics to a Prometheus instance
+- `OTLP Exporter` - Shows the OTLP exporter reporting traces to Zipkin and metrics to a Prometheus via the otel-collector

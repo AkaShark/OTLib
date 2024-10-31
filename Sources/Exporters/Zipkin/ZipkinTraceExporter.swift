@@ -5,9 +5,6 @@
 
 import Foundation
 import OpenTelemetrySdk
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
 
 public class ZipkinTraceExporter: SpanExporter {
     public var options: ZipkinTraceExporterOptions
@@ -18,11 +15,10 @@ public class ZipkinTraceExporter: SpanExporter {
         localEndPoint = ZipkinTraceExporter.getLocalZipkinEndpoint(name: options.serviceName)
     }
 
-  public func export(spans: [SpanData], explicitTimeout: TimeInterval? = nil) -> SpanExporterResultCode {
+    public func export(spans: [SpanData]) -> SpanExporterResultCode {
         guard let url = URL(string: self.options.endpoint) else { return .failure }
 
-    var request = URLRequest(url: url)
-    request.timeoutInterval = min(explicitTimeout ?? TimeInterval.greatestFiniteMagnitude, options.timeoutSeconds)
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         options.additionalHeaders.forEach {
@@ -54,11 +50,11 @@ public class ZipkinTraceExporter: SpanExporter {
         return status
     }
 
-  public func flush(explicitTimeout: TimeInterval? = nil) -> SpanExporterResultCode {
+    public func flush() -> SpanExporterResultCode {
         return .success
     }
 
-    public func shutdown(explicitTimeout: TimeInterval? = nil) {
+    public func shutdown() {
     }
 
     func encodeSpans(spans: [SpanData]) -> [ZipkinSpan] {

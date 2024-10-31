@@ -44,7 +44,7 @@ public class RecordEventsReadableSpan: ReadableSpan {
     public private(set) var links = [SpanData.Link]()
     /// Number of links recorded.
     public private(set) var totalRecordedLinks: Int
-    /// Max number of attributes per span.
+    /// Max number of attibutes per span.
     public private(set) var maxNumberOfAttributes: Int
     /// Max number of attributes per event.
     public private(set) var maxNumberOfAttributesPerEvent: Int
@@ -290,19 +290,14 @@ public class RecordEventsReadableSpan: ReadableSpan {
     }
 
     public func end(time: Date) {
-        let alreadyEnded = internalStatusQueue.sync(flags: .barrier) { () -> Bool in
+        internalStatusQueue.sync(flags: .barrier) {
             if internalEnd {
-                return true
+                return
+
+            } else {
+                internalEnd = true
             }
-
-            internalEnd = true
-            return false
         }
-
-        if alreadyEnded {
-            return
-        }
-
         eventsSyncLock.withLockVoid {
             attributesSyncLock.withLockVoid {
                 isRecording = false
@@ -326,40 +321,5 @@ public class RecordEventsReadableSpan: ReadableSpan {
     /// For testing purposes
     internal func getDroppedLinksCount() -> Int {
         return totalRecordedLinks - links.count
-    }
-
-    public func recordException(_ exception: SpanException) {
-        recordException(exception, timestamp: clock.now)
-    }
-
-    public func recordException(_ exception: any SpanException, timestamp: Date) {
-        recordException(exception, attributes: [:], timestamp: timestamp)
-    }
-
-    public func recordException(_ exception: any SpanException, attributes: [String : AttributeValue]) {
-        recordException(exception, attributes: attributes, timestamp: clock.now)
-    }
-
-    public func recordException(_ exception: any SpanException, attributes: [String : AttributeValue], timestamp: Date) {
-        var limitedAttributes = AttributesDictionary(capacity: maxNumberOfAttributesPerEvent)
-        limitedAttributes.updateValues(attributes: attributes)
-        limitedAttributes.updateValues(attributes: exception.eventAttributes)
-        addEvent(event: SpanData.Event(name: SemanticAttributes.exception.rawValue, timestamp: timestamp, attributes: limitedAttributes.attributes))
-    }
-}
-
-extension SpanException {
-    fileprivate var eventAttributes: [String: AttributeValue] {
-        [
-            SemanticAttributes.exceptionType.rawValue: type,
-            SemanticAttributes.exceptionMessage.rawValue: message,
-            SemanticAttributes.exceptionStacktrace.rawValue: stackTrace?.joined(separator: "\n")
-        ].compactMapValues { value in
-            if let value, !value.isEmpty {
-                return .string(value)
-            }
-
-            return nil
-        }
     }
 }

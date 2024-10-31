@@ -4,16 +4,15 @@
  */
 
 import Foundation
-import GRPC
 import Logging
+import GRPC
 import NIO
 import OpenTelemetryApi
-import OpenTelemetryProtocolExporterCommon
-@testable import OpenTelemetryProtocolExporterGrpc
+@testable import OpenTelemetryProtocolExporter
 @testable import OpenTelemetrySdk
 import XCTest
 
-extension Swift.String: LocalizedError {
+extension String: LocalizedError {
     public var errorDescription: String? { return self }
 }
 
@@ -50,31 +49,23 @@ class OtlpTraceExporterTests: XCTestCase {
 
     func testImplicitGrpcLoggingConfig() throws {
         let exporter = OtlpTraceExporter(channel: channel)
-        let logger = exporter.callOptions.logger
+        guard let logger = exporter.callOptions?.logger else {
+            throw "Missing logger"
+        }
+        XCTAssertEqual(logger.label, "io.grpc")
     }
 
     func testExplicitGrpcLoggingConfig() throws {
         let exporter = OtlpTraceExporter(channel: channel, logger: Logger(label: "my.grpc.logger"))
-        let logger = exporter.callOptions.logger
-        XCTAssertEqual(logger.label, "my.grpc.logger")
-    }
-
-    func verifyUserAgentIsSet(exporter: OtlpTraceExporter) {
-        let callOptions = exporter.callOptions
-        let customMetadata = callOptions.customMetadata
-        let userAgent = Headers.getUserAgentHeader()
-        if customMetadata.contains(name: Constants.HTTP.userAgent) && customMetadata.first(name: Constants.HTTP.userAgent) == userAgent {
-            return
+        guard let logger = exporter.callOptions?.logger else {
+            throw "Missing logger"
         }
-
-        XCTFail("User-Agent header was not set correctly")
+        XCTAssertEqual(logger.label, "my.grpc.logger")
     }
 
     func testConfigHeadersIsNil_whenDefaultInitCalled() throws {
         let exporter = OtlpTraceExporter(channel: channel)
         XCTAssertNil(exporter.config.headers)
-
-        verifyUserAgentIsSet(exporter: exporter)
     }
 
     func testConfigHeadersAreSet_whenInitCalledWithCustomConfig() throws {
@@ -83,17 +74,13 @@ class OtlpTraceExporterTests: XCTestCase {
         XCTAssertNotNil(exporter.config.headers)
         XCTAssertEqual(exporter.config.headers?[0].0, "FOO")
         XCTAssertEqual(exporter.config.headers?[0].1, "BAR")
-        XCTAssertEqual("BAR", exporter.callOptions.customMetadata.first(name: "FOO"))
-
-        verifyUserAgentIsSet(exporter: exporter)
+        XCTAssertEqual("BAR", exporter.callOptions?.customMetadata.first(name: "FOO"))
     }
 
     func testConfigHeadersAreSet_whenInitCalledWithExplicitHeaders() throws {
         let exporter = OtlpTraceExporter(channel: channel, envVarHeaders: [("FOO", "BAR")])
         XCTAssertNil(exporter.config.headers)
-        XCTAssertEqual("BAR", exporter.callOptions.customMetadata.first(name: "FOO"))
-
-        verifyUserAgentIsSet(exporter: exporter)
+        XCTAssertEqual("BAR", exporter.callOptions?.customMetadata.first(name: "FOO"))
     }
 
     func testExportMultipleSpans() {
@@ -169,7 +156,7 @@ class OtlpTraceExporterTests: XCTestCase {
 class FakeCollector: Opentelemetry_Proto_Collector_Trace_V1_TraceServiceProvider {
     var receivedSpans = [Opentelemetry_Proto_Trace_V1_ResourceSpans]()
     var returnedStatus = GRPCStatus.ok
-    var interceptors: Opentelemetry_Proto_Collector_Trace_V1_TraceServiceServerInterceptorFactoryProtocol?
+    var interceptors: Opentelemetry_Proto_Collector_Trace_V1_TraceServiceServerInterceptorFactoryProtocol? = nil
 
     func export(request: Opentelemetry_Proto_Collector_Trace_V1_ExportTraceServiceRequest, context: StatusOnlyCallContext) -> EventLoopFuture<Opentelemetry_Proto_Collector_Trace_V1_ExportTraceServiceResponse> {
         receivedSpans.append(contentsOf: request.resourceSpans)

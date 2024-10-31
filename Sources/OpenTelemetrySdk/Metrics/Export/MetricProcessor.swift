@@ -4,8 +4,7 @@
  */
 
 import Foundation
-// Phase 2
-//@available(*, deprecated, renamed: "StableMetricReader")
+
 public protocol MetricProcessor {
     /// Finish the current collection cycle and return the metrics it holds.
     /// This is called at the end of one collection cycle by the Controller.

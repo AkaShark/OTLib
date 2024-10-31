@@ -62,13 +62,5 @@ class ReadableSpanMock: ReadableSpan {
 
     func addEvent(name: String, attributes: [String: AttributeValue], timestamp: Date) {}
 
-    func recordException(_ exception: SpanException) {}
-
-    func recordException(_ exception: any SpanException, timestamp: Date) {}
-
-    func recordException(_ exception: any SpanException, attributes: [String : AttributeValue]) {}
-
-    func recordException(_ exception: any SpanException, attributes: [String : AttributeValue], timestamp: Date) {}
-
     var description: String = "ReadableSpanMock"
 }

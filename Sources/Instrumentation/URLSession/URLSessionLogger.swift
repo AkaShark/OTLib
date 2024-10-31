@@ -54,8 +54,8 @@ class URLSessionLogger {
             attributes[SemanticAttributes.netPeerName.rawValue] = AttributeValue.string(host)
         }
         
-        if let opertion: String = request.allHTTPHeaderFields["Operation"] {
-            attributes[SemanticAttributes.clientApiOpertion.rawValue] = AttributeValue.string(opertion)
+        if let opertion: String = request.allHTTPHeaderFields?["Operation"] {
+            attributes[SemanticAttributes.operation.rawValue] = AttributeValue.string(opertion)
         }
 
         if let requestScheme = request.url?.scheme {
@@ -64,10 +64,6 @@ class URLSessionLogger {
 
         if let port = request.url?.port {
             attributes[SemanticAttributes.netPeerPort.rawValue] = AttributeValue.int(port)
-        }
-        
-        if let bodySize = request.httpBody?.count {
-            attributes[SemanticAttributes.httpRequestBodySize.rawValue] = AttributeValue.int(bodySize)
         }
 
         var spanName = "HTTP " + (request.httpMethod ?? "")
@@ -115,15 +111,8 @@ class URLSessionLogger {
         }
 
         let statusCode = httpResponse.statusCode
-        span.setAttribute(key: SemanticAttributes.httpStatusCode.rawValue, 
-                          value: AttributeValue.int(statusCode))
+        span.setAttribute(key: SemanticAttributes.httpStatusCode.rawValue, value: AttributeValue.int(statusCode))
         span.status = statusForStatusCode(code: statusCode)
-
-        if let contentLengthHeader = httpResponse.allHeaderFields["Content-Length"] as? String,
-           let contentLength = Int(contentLengthHeader) {
-            span.setAttribute(key: SemanticAttributes.httpResponseBodySize.rawValue,
-                              value: AttributeValue.int(contentLength))
-        }
 
         instrumentation.configuration.receivedResponse?(response, dataOrFile, span)
         span.end()
@@ -162,9 +151,8 @@ class URLSessionLogger {
         }
         instrumentation.configuration.injectCustomHeaders?(&request, span)
         var instrumentedRequest = request
-        objc_setAssociatedObject(instrumentedRequest, URLSessionInstrumentation.instrumentedKey, true, .OBJC_ASSOCIATION_COPY_NONATOMIC)
-        let propagators = OpenTelemetry.instance.propagators
-        var traceHeaders = tracePropagationHTTPHeaders(span: span, textMapPropagator: propagators.textMapPropagator, textMapBaggagePropagator: propagators.textMapBaggagePropagator)
+        objc_setAssociatedObject(instrumentedRequest, &URLSessionInstrumentation.instrumentedKey, true, .OBJC_ASSOCIATION_COPY_NONATOMIC)
+        var traceHeaders = tracePropagationHTTPHeaders(span: span, textMapPropagator: OpenTelemetry.instance.propagators.textMapPropagator)
         if let originalHeaders = request.allHTTPHeaderFields {
             traceHeaders.merge(originalHeaders) { _, new in new }
         }
@@ -172,7 +160,7 @@ class URLSessionLogger {
         return instrumentedRequest
     }
 
-    private static func tracePropagationHTTPHeaders(span: Span?, textMapPropagator: TextMapPropagator, textMapBaggagePropagator: TextMapBaggagePropagator) -> [String: String] {
+    private static func tracePropagationHTTPHeaders(span: Span?, textMapPropagator: TextMapPropagator) -> [String: String] {
         var headers = [String: String]()
 
         struct HeaderSetter: Setter {
@@ -185,10 +173,6 @@ class URLSessionLogger {
             return headers
         }
         textMapPropagator.inject(spanContext: currentSpan.context, carrier: &headers, setter: HeaderSetter())
-
-        if let baggage = OpenTelemetry.instance.contextProvider.activeBaggage {
-            textMapBaggagePropagator.inject(baggage: baggage, carrier: &headers, setter: HeaderSetter())
-        }
         return headers
     }
 }

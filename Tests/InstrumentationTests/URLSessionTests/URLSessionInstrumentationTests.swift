@@ -82,20 +82,11 @@ class URLSessionInstrumentationTests: XCTestCase {
     static var semaphore: DispatchSemaphore!
     var sessionDelegate: SessionDelegate!
     static var instrumentation: URLSessionInstrumentation!
-    static var baggage: Baggage!
 
     static let server = HttpTestServer(url: URL(string: "http://localhost:33333"), config: nil)
 
     override class func setUp() {
-        OpenTelemetry.registerPropagators(textPropagators: [W3CTraceContextPropagator()], baggagePropagator: W3CBaggagePropagator())
         OpenTelemetry.registerTracerProvider(tracerProvider: TracerProviderSdk())
-
-        baggage = DefaultBaggageManager.instance.baggageBuilder()
-            .put(key: EntryKey(name: "foo")!, value: EntryValue(string: "bar")!, metadata: nil)
-            .build()
-
-        OpenTelemetry.instance.contextProvider.setActiveBaggage(baggage)
-
         let sem = DispatchSemaphore(value: 0)
         DispatchQueue.global(qos: .default).async {
             do {
@@ -111,7 +102,6 @@ class URLSessionInstrumentationTests: XCTestCase {
 
     override class func tearDown() {
         server.stop()
-        OpenTelemetry.instance.contextProvider.removeContextForBaggage(baggage)
     }
 
     override func setUp() {
@@ -205,9 +195,9 @@ class URLSessionInstrumentationTests: XCTestCase {
     }
 
     public func testConfigurationCallbacksCalledWhenForbidden() throws {
-        #if os(watchOS)
+        if #available(watchOS 3.0, *) {
             throw XCTSkip("Implementation needs to be updated for watchOS to make this test pass")
-        #endif
+        }
 
         let request = URLRequest(url: URL(string: "http://localhost:33333/forbidden")!)
         let task = URLSession.shared.dataTask(with: request) { data, _, _ in
@@ -250,30 +240,20 @@ class URLSessionInstrumentationTests: XCTestCase {
         XCTAssertTrue(URLSessionInstrumentationTests.checker.receivedErrorCalled)
     }
 
-    public func testShouldInstrumentRequest() throws {
+    public func testShouldInstrumentRequest() {
         let request1 = URLRequest(url: URL(string: "http://defaultName.com")!)
         let request2 = URLRequest(url: URL(string: "http://dontinstrument.com")!)
 
-        let processedRequest1 = try XCTUnwrap(URLSessionLogger.processAndLogRequest(request1, sessionTaskId: "111", instrumentation: URLSessionInstrumentationTests.instrumentation, shouldInjectHeaders: true))
-        let processedRequest2 = URLSessionLogger.processAndLogRequest(request2, sessionTaskId: "222", instrumentation: URLSessionInstrumentationTests.instrumentation, shouldInjectHeaders: true)
-
-        // `processedRequest2` is expected to be nil, because its URL was marked as not to be instrumented.
-        XCTAssertNil(processedRequest2)
+        URLSessionLogger.processAndLogRequest(request1, sessionTaskId: "111", instrumentation: URLSessionInstrumentationTests.instrumentation, shouldInjectHeaders: true)
+        URLSessionLogger.processAndLogRequest(request2, sessionTaskId: "222", instrumentation: URLSessionInstrumentationTests.instrumentation, shouldInjectHeaders: true)
 
         XCTAssertTrue(URLSessionInstrumentationTests.checker.shouldInstrumentCalled)
 
-        let processedHeaders1 = try XCTUnwrap(processedRequest1.allHTTPHeaderFields)
-
-        // headers injected from `TextMapPropagator` implementation
-        XCTAssertTrue(processedHeaders1.contains(where: { $0.key == W3CTraceContextPropagator.traceparent }))
-
-        // headers injected from `TextMapBaggagePropagator` implementation
-        XCTAssertTrue(processedHeaders1.contains(where: { $0.key == W3CBaggagePropagator.headerBaggage && $0.value == "foo=bar" }))
-
         XCTAssertEqual(1, URLSessionLogger.runningSpans.count)
-
-        let span = try XCTUnwrap(URLSessionLogger.runningSpans["111"])
-        XCTAssertEqual("HTTP GET", span.name)
+        XCTAssertNotNil(URLSessionLogger.runningSpans["111"])
+        if let span = URLSessionLogger.runningSpans["111"] {
+            XCTAssertEqual("HTTP GET", span.name)
+        }
     }
 
     public func testDataTaskWithRequestBlock() {
@@ -300,22 +280,6 @@ class URLSessionInstrumentationTests: XCTestCase {
         task.resume()
         URLSessionInstrumentationTests.semaphore.wait()
 
-        XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-        XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-    }
-
-    public func testDataTaskWithUrlBlock_doesNotCrashWhenResumed_whenDataTaskIsRunning() {
-        let url = URL(string: "http://localhost:33333/success")!
-        let dataTask = URLSession.shared.dataTask(with: url) { _, _, _ in
-            URLSessionInstrumentationTests.semaphore.signal()
-        }
-
-        dataTask.resume()
-        Task.detached {
-            dataTask.resume()
-        }
-
-        URLSessionInstrumentationTests.semaphore.wait()
         XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
         XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
     }
@@ -424,169 +388,4 @@ class URLSessionInstrumentationTests: XCTestCase {
         XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
         XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
     }
-    
-    #if swift(>=5.5.2)
-        @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
-        public func testConfigurationCallbacksCalledWhenSuccessAsync() async throws {
-            let request = URLRequest(url: URL(string: "http://localhost:33333/success")!)
-
-            let (data, _) = try await URLSession.shared.data(for: request)
-            let string = String(decoding: data, as: UTF8.self)
-            print(string)
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.shouldInstrumentCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.nameSpanCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.spanCustomizationCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.shouldInjectTracingHeadersCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.receivedResponseCalled)
-        }
-
-        @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
-        public func testConfigurationCallbacksCalledWhenForbiddenAsync() async throws {
-            #if os(watchOS)
-                throw XCTSkip("Implementation needs to be updated for watchOS to make this test pass")
-            #endif
-            let request = URLRequest(url: URL(string: "http://localhost:33333/forbidden")!)
-            let (data, _) = try await URLSession.shared.data(for: request)
-            let string = String(decoding: data, as: UTF8.self)
-            print(string)
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.shouldInstrumentCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.nameSpanCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.spanCustomizationCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.shouldInjectTracingHeadersCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.receivedResponseCalled)
-            XCTAssertFalse(URLSessionInstrumentationTests.checker.receivedErrorCalled)
-        }
-
-        @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
-        public func testConfigurationCallbacksCalledWhenErrorAsync() async throws {
-            let request = URLRequest(url: URL(string: "http://localhost:33333/error")!)
-            
-            do {
-                _ = try await URLSession.shared.data(for: request)
-            } catch {
-            }
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.shouldInstrumentCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.nameSpanCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.spanCustomizationCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.shouldInjectTracingHeadersCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertFalse(URLSessionInstrumentationTests.checker.receivedResponseCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.receivedErrorCalled)
-        }
-
-        @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
-        public func testDataTaskWithRequestBlockAsync() async throws {
-            let request = URLRequest(url: URL(string: "http://localhost:33333/success")!)
-
-            _ = try await URLSession.shared.data(for: request)
-
-            XCTAssertEqual(0, URLSessionInstrumentationTests.instrumentation.startedRequestSpans.count)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-        }
-
-        @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
-        public func testDataTaskWithUrlBlockAsync() async throws {
-            let url = URL(string: "http://localhost:33333/success")!
-
-            _ = try await URLSession.shared.data(from: url)
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-        }
-
-    @available(macOS 12, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
-        public func testDownloadTaskWithUrlBlockAsync() async throws {
-            let url = URL(string: "http://localhost:33333/success")!
-
-            _ = try await URLSession.shared.download(from: url)
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-        }
-
-        @available(macOS 12, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
-        public func testDownloadTaskWithRequestBlockAsync() async throws {
-            let url = URL(string: "http://localhost:33333/success")!
-            let request = URLRequest(url: url)
-            _ = try await URLSession.shared.download(for: request)
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.receivedResponseCalled)
-            XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-        }
-
-        @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
-        public func testUploadTaskWithRequestBlockAsync() async throws {
-            let url = URL(string: "http://localhost:33333/success")!
-            let request = URLRequest(url: url)
-            _ = try await URLSession.shared.upload(for: request, from: Data())
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-        }
-
-        @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
-        public func
-    testDataTaskWithRequestDelegateAsync() async throws {
-            let request = URLRequest(url: URL(string: "http://localhost:33333/success")!)
-
-            let session = URLSession(configuration: URLSessionConfiguration.default, delegate: sessionDelegate, delegateQueue: nil)
-            _ = try await session.data(for: request)
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-        }
-
-        @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
-        public func testDataTaskWithUrlDelegateAsync() async throws {
-            let url = URL(string: "http://localhost:33333/success")!
-
-            let session = URLSession(configuration: URLSessionConfiguration.default, delegate: sessionDelegate, delegateQueue: nil)
-            _ = try await session.data(from: url)
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-        }
-
-        @available(macOS 12, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
-        public func testDownloadTaskWithUrlDelegateAsync() async throws {
-            let url = URL(string: "http://localhost:33333/success")!
-
-            _ = try await URLSession.shared.download(from: url, delegate: sessionDelegate)
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-        }
-
-        @available(macOS 12, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
-        public func testDownloadTaskWithRequestDelegateAsync() async throws {
-            let url = URL(string: "http://localhost:33333/success")!
-            let request = URLRequest(url: url)
-
-            let session = URLSession(configuration: URLSessionConfiguration.default, delegate: sessionDelegate, delegateQueue: nil)
-            _ = try await session.download(for: request)
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.receivedResponseCalled)
-            XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-        }
-
-        @available(macOS 10.15, iOS 13.0, tvOS 13.0, *)
-        public func testUploadTaskWithRequestDelegateAsync() async throws {
-            let url = URL(string: "http://localhost:33333/success")!
-            let request = URLRequest(url: url)
-            let session = URLSession(configuration: URLSessionConfiguration.default, delegate: sessionDelegate, delegateQueue: nil)
-            _ = try await session.upload(for: request, from: Data())
-
-            XCTAssertTrue(URLSessionInstrumentationTests.checker.createdRequestCalled)
-            XCTAssertNotNil(URLSessionInstrumentationTests.requestCopy?.allHTTPHeaderFields?[W3CTraceContextPropagator.traceparent])
-        }
-
-    #endif
 }

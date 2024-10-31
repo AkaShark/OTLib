@@ -7,7 +7,7 @@
 import XCTest
 
 class FileWriterTests: XCTestCase {
-    @UniqueTemporaryDirectory private var temporaryDirectory: Directory
+    private let temporaryDirectory = obtainUniqueTemporaryDirectory()
 
     override func setUp() {
         super.setUp()

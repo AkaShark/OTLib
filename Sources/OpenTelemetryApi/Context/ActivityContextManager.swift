@@ -4,7 +4,6 @@
  */
 
 import Foundation
-#if canImport(os.activity)
 import os.activity
 
 // Bridging Obj-C variabled defined as c-macroses. See `activity.h` header.
@@ -15,7 +14,7 @@ private let OS_ACTIVITY_CURRENT = unsafeBitCast(dlsym(UnsafeMutableRawPointer(bi
                                                                       _ parent: Unmanaged<AnyObject>?,
                                                                       _ flags: os_activity_flag_t) -> AnyObject!
 
-class ActivityContextManager: ImperativeContextManager {
+class ActivityContextManager: ContextManager {
     static let instance = ActivityContextManager()
 
     let rlock = NSRecursiveLock()
@@ -69,20 +68,17 @@ class ActivityContextManager: ImperativeContextManager {
     }
 
     func removeContextValue(forKey key: OpenTelemetryContextKeys, value: AnyObject) {
+        let activityIdent = os_activity_get_identifier(OS_ACTIVITY_CURRENT, nil)
         rlock.lock()
-        
-        for (activityKey, activity) in contextMap where value === activity[key.rawValue] {
-            contextMap[activityKey]?[key.rawValue] = nil
-          if contextMap[activityKey]?.isEmpty ?? false {
-            contextMap[activityKey] = nil
-          }
+        contextMap[activityIdent]?[key.rawValue] = nil
+        if contextMap[activityIdent]?.isEmpty ?? false {
+            contextMap[activityIdent] = nil
         }
+        rlock.unlock()
         if let scope = objectScope.object(forKey: value) {
             var scope = scope.scope
             os_activity_scope_leave(&scope)
             objectScope.removeObject(forKey: value)
         }
-        rlock.unlock()
     }
 }
-#endif

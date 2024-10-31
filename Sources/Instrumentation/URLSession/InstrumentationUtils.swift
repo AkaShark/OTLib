@@ -4,11 +4,6 @@
  */
 
 import Foundation
-#if os(iOS) || os(tvOS)
-    import UIKit
-#elseif os(watchOS)
-    import WatchKit
-#endif
 
 enum InstrumentationUtils {
     static func objc_getClassList() -> [AnyClass] {

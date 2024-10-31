@@ -12,7 +12,6 @@ public extension Meter {
     }
 }
 
-@available(*, deprecated, renamed: "StableMeterSdk")
 class MeterSdk: Meter {
     fileprivate let collectLock = Lock()
     fileprivate let rawMetricLock = Lock()

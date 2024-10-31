@@ -190,35 +190,38 @@ class RecordEventsReadableSpanTest: XCTestCase {
         span.setAttribute(key: "LongKey", value: 1000)
         span.setAttribute(key: "DoubleKey", value: 10.0)
         span.setAttribute(key: "BooleanKey", value: false)
-        span.setAttribute(key: "ArrayStringKey", value: AttributeValue.array(AttributeArray(values:[.string("StringVal"), .string(""), .string("StringVal2")])))
-        span.setAttribute(key: "ArrayLongKey", value: AttributeValue.array(AttributeArray(values:[.int(1), .int(2), .int(3), .int(4), .int(5)])))
-        span.setAttribute(key: "ArrayDoubleKey", value: AttributeValue.array(AttributeArray(values:[.double(0.1),.double(2.3), .double(4.5), .double(6.7), .double(8.9)])))
-        span.setAttribute(key: "ArrayBoolKey", value: AttributeValue.array(AttributeArray(values:[.bool(true), .bool(false), .bool(false), .bool(true)])))
-        span.setAttribute(key: "EmptyArrayStringKey", value: AttributeValue.array(AttributeArray.empty))
+        span.setAttribute(key: "ArrayStringKey", value: AttributeValue.stringArray(["StringVal", "", "StringVal2"]))
+        span.setAttribute(key: "ArrayLongKey", value: AttributeValue.intArray([1, 2, 3, 4, 5]))
+        span.setAttribute(key: "ArrayDoubleKey", value: AttributeValue.doubleArray([0.1, 2.3, 4.5, 6.7, 8.9]))
+        span.setAttribute(key: "ArrayBoolKey", value: AttributeValue.boolArray([true, false, false, true]))
+        span.setAttribute(key: "EmptyArrayStringKey", value: AttributeValue.stringArray([String]()))
+        span.setAttribute(key: "EmptyArrayLongKey", value: AttributeValue.intArray([Int]()))
+        span.setAttribute(key: "EmptyArrayDoubleKey", value: AttributeValue.doubleArray([Double]()))
+        span.setAttribute(key: "EmptyArrayBooleanKey", value: AttributeValue.boolArray([Bool]()))
         span.end()
         let spanData = span.toSpanData()
-        XCTAssertEqual(spanData.attributes.count, 11)
+        XCTAssertEqual(spanData.attributes.count, 14)
         XCTAssert({
-            if case let AttributeValue.array(array) = spanData.attributes["ArrayStringKey"]! {
-              return array.values.count == 3
+            if case let AttributeValue.stringArray(array) = spanData.attributes["ArrayStringKey"]! {
+                return array.count == 3
             }
             return false
         }())
         XCTAssert({
-            if case let AttributeValue.array(array) = spanData.attributes["ArrayLongKey"]! {
-                return array.values.count == 5
+            if case let AttributeValue.intArray(array) = spanData.attributes["ArrayLongKey"]! {
+                return array.count == 5
             }
             return false
         }())
         XCTAssert({
-            if case let AttributeValue.array(array) = spanData.attributes["ArrayDoubleKey"]! {
-                return array.values.count == 5
+            if case let AttributeValue.doubleArray(array) = spanData.attributes["ArrayDoubleKey"]! {
+                return array.count == 5
             }
             return false
         }())
         XCTAssert({
-            if case let AttributeValue.array(array) = spanData.attributes["ArrayBoolKey"]! {
-                return array.values.count == 4
+            if case let AttributeValue.boolArray(array) = spanData.attributes["ArrayBoolKey"]! {
+                return array.count == 4
             }
             return false
         }())
@@ -231,155 +234,6 @@ class RecordEventsReadableSpanTest: XCTestCase {
         span.end()
         let spanData = span.toSpanData()
         XCTAssertEqual(spanData.events.count, 2)
-    }
-
-#if !os(Linux)
-    func testRecordExceptionWithStackTrace() throws {
-        final class TestException: NSException {
-            override var callStackSymbols: [String] {
-                [
-                    "test-stack-entry-1",
-                    "test-stack-entry-2",
-                    "test-stack-entry-3"
-                ]
-            }
-        }
-        
-        let span = createTestRootSpan()
-        let exception = TestException(name: .genericException, reason: "test reason")
-        span.recordException(exception)
-        span.end()
-        let spanData = span.toSpanData()
-        XCTAssertEqual(spanData.events.count, 1)
-        
-        let spanException = exception as SpanException
-        let exceptionMessage = try XCTUnwrap(spanException.message)
-        let exceptionStackTrace = try XCTUnwrap(spanException.stackTrace)
-        
-        let exceptionEvent = try XCTUnwrap(spanData.events.first)
-        let exceptionAttributes = exceptionEvent.attributes
-        XCTAssertEqual(exceptionEvent.name, SemanticAttributes.exception.rawValue)
-        XCTAssertEqual(exceptionAttributes[SemanticAttributes.exceptionType.rawValue], .string(spanException.type))
-        XCTAssertEqual(exceptionAttributes[SemanticAttributes.exceptionMessage.rawValue], .string(exceptionMessage))
-        XCTAssertNil(exceptionAttributes[SemanticAttributes.exceptionEscaped.rawValue])
-        XCTAssertEqual(exceptionAttributes[SemanticAttributes.exceptionStacktrace.rawValue], .string(exceptionStackTrace.joined(separator: "\n")))
-    }
-    
-    func testRecordExceptionWithoutStackTrace() throws {
-        let span = createTestRootSpan()
-        let exception = NSException(name: .genericException, reason: "test reason")
-        span.recordException(exception)
-        span.end()
-        let spanData = span.toSpanData()
-        XCTAssertEqual(spanData.events.count, 1)
-        
-        let spanException = exception as SpanException
-        let exceptionMessage = try XCTUnwrap(spanException.message)
-        
-        let exceptionEvent = try XCTUnwrap(spanData.events.first)
-        let exceptionAttributes = exceptionEvent.attributes
-        XCTAssertEqual(exceptionEvent.name, SemanticAttributes.exception.rawValue)
-        XCTAssertEqual(exceptionAttributes[SemanticAttributes.exceptionType.rawValue], .string(spanException.type))
-        XCTAssertEqual(exceptionAttributes[SemanticAttributes.exceptionMessage.rawValue], .string(exceptionMessage))
-        XCTAssertNil(exceptionAttributes[SemanticAttributes.exceptionEscaped.rawValue])
-        XCTAssertNil(exceptionAttributes[SemanticAttributes.exceptionStacktrace.rawValue])
-    }
-    
-    func testRecordMultipleExceptions() throws {
-        let span = createTestRootSpan()
-        
-        let firstException = NSException(name: .genericException, reason: "test reason")
-        span.recordException(firstException)
-        
-        let secondException = NSError(domain: "test", code: 0)
-        span.recordException(secondException)
-        
-        span.end()
-        let spanData = span.toSpanData()
-        XCTAssertEqual(spanData.events.count, 2)
-        
-        let firstSpanException = firstException as SpanException
-        let secondSpanException = secondException as SpanException
-        let firstExceptionAttributes = try XCTUnwrap(spanData.events.first?.attributes)
-        let secondExceptionAttributes = try XCTUnwrap(spanData.events.last?.attributes)
-        XCTAssertEqual(firstExceptionAttributes[SemanticAttributes.exceptionType.rawValue], .string(firstSpanException.type))
-        XCTAssertEqual(secondExceptionAttributes[SemanticAttributes.exceptionType.rawValue], .string(secondSpanException.type))
-    }
-#endif
-
-    func testExceptionAttributesOverwriteAdditionalAttributes() throws {
-        let span = createTestRootSpan()
-        let exception = NSError(domain: "test error", code: 5)
-        span.recordException(
-            exception,
-            attributes: [
-                SemanticAttributes.exceptionMessage.rawValue: .string("another, different reason"),
-                "This-Key-Should-Not-Get-Overwritten": .string("original-value")
-            ]
-        )
-        span.end()
-        let spanData = span.toSpanData()
-        XCTAssertEqual(spanData.events.count, 1)
-
-        let spanException = exception as SpanException
-        let exceptionMessage = try XCTUnwrap(spanException.message)
-
-        let exceptionEvent = try XCTUnwrap(spanData.events.first)
-        let exceptionAttributes = exceptionEvent.attributes
-
-        // Custom value specified for `SemanticAttributes.exceptionMessage`,
-        // but overwritten by the value out of the provided exception.
-        XCTAssertEqual(exceptionAttributes.count, 3)
-        XCTAssertNotEqual(exceptionMessage, "another, different reason")
-        XCTAssertEqual(exceptionAttributes[SemanticAttributes.exceptionMessage.rawValue], .string(exceptionMessage))
-        XCTAssertEqual(exceptionAttributes[SemanticAttributes.exceptionType.rawValue], .string(spanException.type))
-        XCTAssertEqual(exceptionAttributes["This-Key-Should-Not-Get-Overwritten"], .string("original-value"))
-    }
-
-    func testDroppingEventAttributesWhenRecordingException() throws {
-        let maxNumberOfAttributes = 3
-        let spanLimits = SpanLimits().settingAttributePerEventCountLimit(UInt(maxNumberOfAttributes))
-        let span = createTestSpan(config: spanLimits)
-        let exception = NSError(domain: "test error", code: 0)
-        let attributes: [String: AttributeValue] = [
-            "Additional-Key-1": .string("Additional-Key-1"),
-            "Additional-Key-2": .string("Value 2"),
-            "Additional-Key-3": .string("Value 3"),
-        ]
-
-        span.recordException(exception, attributes: attributes)
-        span.end()
-
-        let spanData = span.toSpanData()
-        XCTAssertEqual(spanData.events.count, 1)
-
-        let spanException = exception as SpanException
-        let exceptionMessage = try XCTUnwrap(spanException.message)
-
-        let exceptionEvent = try XCTUnwrap(spanData.events.first)
-        let exceptionAttributes = exceptionEvent.attributes
-
-        // Only 3 attributes per event. Exception events have priority (total of 2), so 1 slot left for additional attributes.
-        // Attributes are added in the order in which their keys appear in the original Dictionary, and are also removed
-        // using the same sequence when overflowing. However, since the order of key-value pairs in a dictionary is
-        // unpredictable, there are no guarantees to how they are ingested in the first place.
-        //
-        // With that in mind, this test ensures that out of the 3 attributes in the resulting dictionary, 2 are expected due to
-        // prioritization and the remaining 1 matches an entry from the additional attributes. We just can't be sure
-        // which of those entries it will be.
-        XCTAssertEqual(exceptionAttributes.count, 3)
-        XCTAssertEqual(exceptionAttributes[SemanticAttributes.exceptionMessage.rawValue], .string(exceptionMessage))
-        XCTAssertEqual(exceptionAttributes[SemanticAttributes.exceptionType.rawValue], .string(spanException.type))
-
-        let remainingExceptionAttributeKeys = exceptionAttributes.keys.filter { key in
-            key != SemanticAttributes.exceptionMessage.rawValue &&
-            key != SemanticAttributes.exceptionType.rawValue
-        }
-
-        XCTAssertEqual(remainingExceptionAttributeKeys.count, 1)
-        let remainingKey = try XCTUnwrap(remainingExceptionAttributeKeys.first)
-        XCTAssertNotNil(attributes[remainingKey])
-        XCTAssertEqual(attributes[remainingKey], exceptionAttributes[remainingKey])
     }
 
     func testWithInitializedAttributes() {
@@ -522,25 +376,12 @@ class RecordEventsReadableSpanTest: XCTestCase {
         let secondEventTimeNanos = clock.now
         readableSpan.addEvent(name: "event2", attributes: event2Attributes)
 
-        clock.advanceMillis(15)
-        let exceptionTimeNanos = clock.now
-        let exception = NSError(domain: "test", code: 0)
-        readableSpan.recordException(NSError(domain: "test", code: 0))
-
         clock.advanceMillis(100)
         readableSpan.end()
         let endTime = clock.now
         let event1 = SpanData.Event(name: "event1", timestamp: firstEventTimeNanos, attributes: event1Attributes)
         let event2 = SpanData.Event(name: "event2", timestamp: secondEventTimeNanos, attributes: event2Attributes)
-        let exceptionEvent = SpanData.Event(
-            name: SemanticAttributes.exception.rawValue,
-            timestamp: exceptionTimeNanos,
-            attributes: [
-                SemanticAttributes.exceptionType.rawValue: .string(exception.type),
-                SemanticAttributes.exceptionMessage.rawValue: .string(exception.message!)
-            ]
-        )
-        let events = [event1, event2, exceptionEvent]
+        let events = [event1, event2]
         let expected = SpanData(traceId: traceId,
                                 spanId: spanId,
                                 traceFlags: TraceFlags(),
@@ -558,7 +399,7 @@ class RecordEventsReadableSpanTest: XCTestCase {
                                 endTime: endTime,
                                 hasRemoteParent: false,
                                 hasEnded: true,
-                                totalRecordedEvents: events.count,
+                                totalRecordedEvents: 2,
                                 totalRecordedLinks: links.count,
                                 totalAttributeCount: 1)
 

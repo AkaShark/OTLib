@@ -56,7 +56,7 @@ class BatchLogRecordProcessorTests : XCTestCase {
         for _ in 0 ..< 100 {
             logger.logRecordBuilder().emit()
         }
-        processor.forceFlush()
+        _ = processor.forceFlush()
         let exported = waitingExporter.waitForExport()
         XCTAssertEqual(exported?.count, 100)
         XCTAssertEqual(waitingExporter.exporter.exportCalledTimes, 1)
@@ -64,7 +64,7 @@ class BatchLogRecordProcessorTests : XCTestCase {
     
     func testShutdownFlushes() {
         let waitingExporter = WaitingLogRecordExporter(numberToWaitFor: 1)
-        let processor = BatchLogRecordProcessor(logRecordExporter: waitingExporter, scheduleDelay: 0.1)
+        let processor = BatchLogRecordProcessor(logRecordExporter: waitingExporter,scheduleDelay: 0)
         let loggerProvider = LoggerProviderBuilder().with(processors: [processor]).build()
         let logger = loggerProvider.get(instrumentationScopeName: "BatchLogRecordProcessorTest")
 
@@ -113,7 +113,7 @@ class BlockingLogRecordExporter: LogRecordExporter {
     
     var state : State = .waitToBlock
     
-  func export(logRecords: [ReadableLogRecord], explicitTimeout: TimeInterval?) -> ExportResult {
+    func export(logRecords: [ReadableLogRecord]) -> ExportResult {
         cond.lock()
         while state != .unblocked {
             state = .blocked
@@ -130,11 +130,11 @@ class BlockingLogRecordExporter: LogRecordExporter {
         }
         cond.unlock()
     }
-    func forceFlush(explicitTimeout: TimeInterval?) -> ExportResult {
+    func forceFlush() -> ExportResult {
         return .success
     }
     
-    func shutdown(explicitTimeout: TimeInterval?) {
+    func shutdown() {
     
     }
     
@@ -169,21 +169,21 @@ class WaitingLogRecordExporter: LogRecordExporter {
         return ret
     }
     
-    func export(logRecords: [ReadableLogRecord], explicitTimeout: TimeInterval?) -> ExportResult {
+    func export(logRecords: [ReadableLogRecord]) -> ExportResult {
         cond.lock()
         logRecordList.append(contentsOf: logRecords)
-        let status = exporter.export(logRecords: logRecords, explicitTimeout: explicitTimeout)
+        let status = exporter.export(logRecords: logRecords)
 
         cond.unlock()
         cond.broadcast()
         return status
     }
     
-    func forceFlush(explicitTimeout: TimeInterval?) -> ExportResult {
-        exporter.forceFlush(explicitTimeout: explicitTimeout)
+    func forceFlush() -> ExportResult {
+        exporter.forceFlush()
     }
-    func shutdown(explicitTimeout: TimeInterval?) {
+    func shutdown() {
         shutDownCalled = true
-        exporter.shutdown(explicitTimeout: explicitTimeout)
+        exporter.shutdown()
     }
 }

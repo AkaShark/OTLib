@@ -3,13 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-
 @testable import OpenTelemetryApi
 @testable import OpenTelemetrySdk
 import XCTest
-import OpenTelemetryTestUtils
 
-class SpanBuilderSdkTestInfo: OpenTelemetryContextTestCase {
+import os.activity
+// Bridging Obj-C variabled defined as c-macroses. See `activity.h` header.
+private let OS_ACTIVITY_CURRENT = unsafeBitCast(dlsym(UnsafeMutableRawPointer(bitPattern: -2), "_os_activity_current"),
+                                                to: os_activity_t.self)
+@_silgen_name("_os_activity_create") private func _os_activity_create(_ dso: UnsafeRawPointer?,
+                                                                      _ description: UnsafePointer<Int8>,
+                                                                      _ parent: Unmanaged<AnyObject>?,
+                                                                      _ flags: os_activity_flag_t) -> AnyObject!
+private let dso = UnsafeMutableRawPointer(mutating: #dsohandle)
+
+class SpanBuilderSdkTest: XCTestCase {
     let spanName = "span_name"
     let sampledSpanContext = SpanContext.create(traceId: TraceId(idHi: 1000, idLo: 1000),
                                                 spanId: SpanId(id: 3000),
@@ -19,12 +27,9 @@ class SpanBuilderSdkTestInfo: OpenTelemetryContextTestCase {
     var tracerSdk: Tracer!
 
     override func setUp() {
-        super.setUp()
         tracerSdk = tracerSdkFactory.get(instrumentationName: "SpanBuilderSdkTest")
     }
-}
 
-class SpanBuilderSdkTest: SpanBuilderSdkTestInfo {
     func testAddLink() {
         // Verify methods do not crash.
         let spanBuilder = tracerSdk.spanBuilder(spanName: spanName) as! SpanBuilderSdk
@@ -78,10 +83,10 @@ class SpanBuilderSdkTest: SpanBuilderSdkTestInfo {
 
     func testSetAttribute_emptyArrayAttributeValue() {
         let spanBuilder = tracerSdk.spanBuilder(spanName: spanName)
-      spanBuilder.setAttribute(key: "stringArrayAttribute", value: AttributeValue.array(AttributeArray.empty))
-        spanBuilder.setAttribute(key: "boolArrayAttribute", value: AttributeValue.array(AttributeArray.empty))
-        spanBuilder.setAttribute(key: "longArrayAttribute", value: AttributeValue.array(AttributeArray.empty))
-        spanBuilder.setAttribute(key: "doubleArrayAttribute", value: AttributeValue.array(AttributeArray.empty))
+        spanBuilder.setAttribute(key: "stringArrayAttribute", value: AttributeValue.stringArray([String]()))
+        spanBuilder.setAttribute(key: "boolArrayAttribute", value: AttributeValue.boolArray([Bool]()))
+        spanBuilder.setAttribute(key: "longArrayAttribute", value: AttributeValue.intArray([Int]()))
+        spanBuilder.setAttribute(key: "doubleArrayAttribute", value: AttributeValue.doubleArray([Double]()))
         let span = spanBuilder.startSpan() as! RecordEventsReadableSpan
         XCTAssertEqual(span.toSpanData().attributes.count, 4)
     }
@@ -216,12 +221,12 @@ class SpanBuilderSdkTest: SpanBuilderSdkTestInfo {
     }
 
     func testParentCurrentSpan() {
-        tracerSdk.spanBuilder(spanName: spanName).setActive(true).withActiveSpan { parent in
-            let span = tracerSdk.spanBuilder(spanName: spanName).startSpan() as! RecordEventsReadableSpan
-            XCTAssertEqual(span.context.traceId, parent.context.traceId)
-            XCTAssertEqual(span.parentContext?.spanId, parent.context.spanId)
-            span.end()
-        }
+        let parent = tracerSdk.spanBuilder(spanName: spanName).setActive(true).startSpan()
+        let span = tracerSdk.spanBuilder(spanName: spanName).startSpan() as! RecordEventsReadableSpan
+        XCTAssertEqual(span.context.traceId, parent.context.traceId)
+        XCTAssertEqual(span.parentContext?.spanId, parent.context.spanId)
+        span.end()
+        parent.end()
     }
 
     func testParent_invalidContext() {
@@ -253,44 +258,6 @@ class SpanBuilderSdkTest: SpanBuilderSdkTestInfo {
     }
 
     func testParentCurrentSpan_timestampConverter() {
-        tracerSdk.spanBuilder(spanName: spanName).withActiveSpan { parent in
-            let span = tracerSdk.spanBuilder(spanName: spanName).startSpan() as! RecordEventsReadableSpan
-            XCTAssert(span.clock === (parent as! RecordEventsReadableSpan).clock)
-        }
-    }
-
-    func testSpanRestorationInContext() {
-        XCTAssertNil(OpenTelemetry.instance.contextProvider.activeSpan)
-        let parent = tracerSdk.spanBuilder(spanName: spanName).startSpan()
-        OpenTelemetry.instance.contextProvider.withActiveSpan(parent) {
-            XCTAssertEqual(parent.context, OpenTelemetry.instance.contextProvider.activeSpan?.context)
-            let span = tracerSdk.spanBuilder(spanName: spanName).startSpan() as! RecordEventsReadableSpan
-            OpenTelemetry.instance.contextProvider.withActiveSpan(span) {
-                XCTAssertEqual(span.context, OpenTelemetry.instance.contextProvider.activeSpan?.context)
-            }
-            span.end()
-            XCTAssertEqual(parent.context, OpenTelemetry.instance.contextProvider.activeSpan?.context)
-        }
-        parent.end()
-        XCTAssertNil(OpenTelemetry.instance.contextProvider.activeSpan)
-    }
-}
-
-final class SpanBuilderSdkTestImperative: SpanBuilderSdkTestInfo {
-    override var contextManagers: [any ContextManager] {
-        Self.imperativeContextManagers()
-    }
-
-    func testParentCurrentSpan() {
-        let parent = tracerSdk.spanBuilder(spanName: spanName).setActive(true).startSpan()
-        let span = tracerSdk.spanBuilder(spanName: spanName).startSpan() as! RecordEventsReadableSpan
-        XCTAssertEqual(span.context.traceId, parent.context.traceId)
-        XCTAssertEqual(span.parentContext?.spanId, parent.context.spanId)
-        span.end()
-        parent.end()
-    }
-
-    func testParentCurrentSpan_timestampConverter() {
         let parent = tracerSdk.spanBuilder(spanName: spanName).setActive(true).startSpan()
         let span = tracerSdk.spanBuilder(spanName: spanName).startSpan() as! RecordEventsReadableSpan
         XCTAssert(span.clock === (parent as! RecordEventsReadableSpan).clock)
@@ -309,24 +276,6 @@ final class SpanBuilderSdkTestImperative: SpanBuilderSdkTestInfo {
         XCTAssertEqual(parent.context, OpenTelemetry.instance.contextProvider.activeSpan?.context)
         parent.end()
         XCTAssertNil(OpenTelemetry.instance.contextProvider.activeSpan)
-    }
-}
-
-#if canImport(os.activity)
-import os.activity
-// Bridging Obj-C variabled defined as c-macroses. See `activity.h` header.
-private let OS_ACTIVITY_CURRENT = unsafeBitCast(dlsym(UnsafeMutableRawPointer(bitPattern: -2), "_os_activity_current"),
-                                                to: os_activity_t.self)
-@_silgen_name("_os_activity_create") private func _os_activity_create(_ dso: UnsafeRawPointer?,
-                                                                      _ description: UnsafePointer<Int8>,
-                                                                      _ parent: Unmanaged<AnyObject>?,
-                                                                      _ flags: os_activity_flag_t) -> AnyObject!
-
-private let dso = UnsafeMutableRawPointer(mutating: #dsohandle)
-
-final class SpanBuilderSdkTestActivity: SpanBuilderSdkTestInfo {
-    override var contextManagers: [any ContextManager] {
-        Self.activityContextManagers()
     }
 
     func testSpanRestorationInContextWithExtraActivities() {
@@ -383,4 +332,3 @@ final class SpanBuilderSdkTestActivity: SpanBuilderSdkTestInfo {
         XCTAssertNil(OpenTelemetry.instance.contextProvider.activeSpan)
     }
 }
-#endif

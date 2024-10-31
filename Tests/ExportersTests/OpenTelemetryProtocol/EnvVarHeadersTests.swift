@@ -4,7 +4,7 @@
  */
 
 import Foundation
-import OpenTelemetryProtocolExporterCommon
+import OpenTelemetryProtocolExporter
 import XCTest
 
 class EnvVarHeadersTests: XCTestCase {

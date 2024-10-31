@@ -9,8 +9,7 @@ import NIO
 import NIOHTTP1
 import NIOTestUtils
 import OpenTelemetryApi
-import OpenTelemetryProtocolExporterCommon
-@testable import OpenTelemetryProtocolExporterHttp
+@testable import OpenTelemetryProtocolExporter
 @testable import OpenTelemetrySdk
 import XCTest
 
@@ -34,7 +33,7 @@ class OtlpHttpLogRecordExporterTests: XCTestCase {
     }
     
     func testExport() {
-        let testBody = AttributeValue.string("Helloworld" + String(Int.random(in: 1...100)))
+        let testBody = "Hello world " + String(Int.random(in: 1...100))
         let logRecord = ReadableLogRecord(resource: Resource(),
                                           instrumentationScopeInfo: InstrumentationScopeInfo(name: "scope"),
                                           timestamp: Date(),
@@ -46,18 +45,15 @@ class OtlpHttpLogRecordExporterTests: XCTestCase {
         
         let endpoint = URL(string: "http://localhost:\(testServer.serverPort)")!
         let exporter = OtlpHttpLogExporter(endpoint: endpoint)
+        
         let _ = exporter.export(logRecords: [logRecord])
         
         // TODO: Use protobuf to verify that we have received the correct Log records      
-        XCTAssertNoThrow(try testServer.receiveHeadAndVerify { head in
-            let otelVersion = Headers.getUserAgentHeader()
-            XCTAssertTrue(head.headers.contains(name: Constants.HTTP.userAgent))
-            XCTAssertEqual(otelVersion, head.headers.first(name: Constants.HTTP.userAgent))
-        })
+        XCTAssertNoThrow(try testServer.receiveHead())
         XCTAssertNoThrow(try testServer.receiveBodyAndVerify() { body in
             var contentsBuffer = ByteBuffer(buffer: body)
             let contents = contentsBuffer.readString(length: contentsBuffer.readableBytes)!
-          XCTAssertTrue(contents.description.contains(testBody.description))
+            XCTAssertTrue(contents.contains(testBody))
         })
         
         XCTAssertNoThrow(try testServer.receiveEnd())

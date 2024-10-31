@@ -10,7 +10,7 @@ import GRPC
 import NIO
 import NIOSSL
 import OpenTelemetryApi
-import OpenTelemetryProtocolExporterGrpc
+import OpenTelemetryProtocolExporter
 import OpenTelemetrySdk
 import ResourceExtension
 import SignPostIntegration
@@ -32,7 +32,7 @@ let configuration = ClientConnection.Configuration.default(
 let client = ClientConnection(configuration: configuration)
 
 let otlpTraceExporter = OtlpTraceExporter(channel: client)
-let stdoutExporter = StdoutSpanExporter()
+let stdoutExporter = StdoutExporter()
 let spanExporter = MultiSpanExporter(spanExporters: [otlpTraceExporter, stdoutExporter])
 
 let spanProcessor = SimpleSpanProcessor(spanExporter: spanExporter)

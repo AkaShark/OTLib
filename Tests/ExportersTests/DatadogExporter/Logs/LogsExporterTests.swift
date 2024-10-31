@@ -18,9 +18,10 @@ class LogsExporterTests: XCTestCase {
     }
 
     func testWhenExportSpanIsCalledAndSpanHasEvent_thenLogIsUploaded() throws {
-#if os(watchOS)
-        throw XCTSkip("Test is flaky on watchOS")
-#endif
+        if #available(watchOS 3.0, *) {
+            throw XCTSkip("Test is flaky on watchOS")
+        }
+
         var logsSent = false
         let expec = expectation(description: "logs received")
         let server = HttpTestServer(url: URL(string: "http://localhost:33333"),
@@ -28,7 +29,7 @@ class LogsExporterTests: XCTestCase {
                                                                  logsReceivedCallback: {
                                                                      logsSent = true
                                                                      expec.fulfill()
-                                                                 }))
+        }))
 
         let sem = DispatchSemaphore(value: 0)
         DispatchQueue.global(qos: .default).async {
@@ -80,7 +81,7 @@ class LogsExporterTests: XCTestCase {
                         name: "spanName",
                         kind: .server,
                         startTime: Date(timeIntervalSinceReferenceDate: 3000),
-                        events: [SpanData.Event(name: "event", timestamp: Date(), attributes: ["attributeKey": AttributeValue.string("attributeValue")])],
+                        events: [SpanData.Event(name: "event", timestamp: Date(), attributes:["attributeKey": AttributeValue.string("attributeValue")])],
                         endTime: Date(timeIntervalSinceReferenceDate: 3001),
                         hasRemoteParent: false)
     }

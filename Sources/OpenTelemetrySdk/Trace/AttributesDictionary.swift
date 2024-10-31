@@ -44,17 +44,12 @@ public struct AttributesDictionary {
                 attributedValue = AttributeValue.string(String(v.prefix(valueLengthLimit)))
             }
             break
-        case let .array(v):
-          var array = [AttributeValue]()
-          v.values.forEach { value in
-            switch value {
-            case let .string(value):
-              array.append(AttributeValue.string(String(value.prefix(valueLengthLimit))))
-            default:
-              array.append(value)
+        case let .stringArray(v):
+            var strArr = [String]()
+            v.forEach { string in
+                strArr.append(String(string.prefix(valueLengthLimit)))
             }
-            attributedValue =  AttributeValue.array(AttributeArray(values:array))
-          }
+            attributedValue = AttributeValue.stringArray(strArr)
             break
         default:
             break

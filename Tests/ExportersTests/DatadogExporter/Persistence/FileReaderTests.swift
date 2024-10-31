@@ -7,7 +7,7 @@
 import XCTest
 
 class FileReaderTests: XCTestCase {
-    @UniqueTemporaryDirectory private var temporaryDirectory: Directory
+    private let temporaryDirectory = obtainUniqueTemporaryDirectory()
 
     override func setUp() {
         super.setUp()

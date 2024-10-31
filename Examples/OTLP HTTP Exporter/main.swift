@@ -6,8 +6,11 @@
 #if os(macOS)
 
 import Foundation
+import GRPC
+import NIO
+import NIOSSL
 import OpenTelemetryApi
-import OpenTelemetryProtocolExporterHttp
+import OpenTelemetryProtocolExporter
 import OpenTelemetrySdk
 import ResourceExtension
 import SignPostIntegration
@@ -23,7 +26,7 @@ let instrumentationScopeName = "OTLPHTTPExporter"
 let instrumentationScopeVersion = "semver:0.1.0"
 
 let otlpHttpTraceExporter = OtlpHttpTraceExporter()
-let stdoutExporter = StdoutSpanExporter()
+let stdoutExporter = StdoutExporter()
 let spanExporter = MultiSpanExporter(spanExporters: [otlpHttpTraceExporter, stdoutExporter])
 
 let spanProcessor = SimpleSpanProcessor(spanExporter: spanExporter)

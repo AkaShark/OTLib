@@ -25,6 +25,10 @@ public class ApplicationResourceProvider: ResourceProvider {
             attributes[ResourceAttributes.serviceVersion.rawValue] = AttributeValue.string(version)
         }
 
+        if let bundleId = applicationDataSource.identifier {
+            attributes[ResourceAttributes.serviceNamespace.rawValue] = AttributeValue.string(bundleId)
+        }
+
         return attributes
     }
 

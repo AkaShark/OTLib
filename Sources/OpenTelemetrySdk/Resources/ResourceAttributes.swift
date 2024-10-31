@@ -8,66 +8,6 @@ import Foundation
 
 public enum ResourceAttributes: String {
     /**
-    Array of brand name and version separated by a space.
-
-    ~~~
-    // Examplesattributes[.browserBrands] =  Not A;Brand 99attributes[.browserBrands] = Chromium 99attributes[.browserBrands] = Chrome 99
-    ~~~
-
-    - Note: This value is intended to be taken from the [UA client hints API](https://wicg.github.io/ua-client-hints/#interface) (`navigator.userAgentData.brands`).
-    - Requires: Value type should be `[String]`
-    */
-    case browserBrands = "browser.brands"
-    /**
-    The platform on which the browser is running.
-
-    ~~~
-    // Examples
-    attributes[.browserPlatform] = "Windows"
-    attributes[.browserPlatform] = "macOS"
-    attributes[.browserPlatform] = "Android"
-    ~~~
-
-    - Note: This value is intended to be taken from the [UA client hints API](https://wicg.github.io/ua-client-hints/#interface) (`navigator.userAgentData.platform`). If unavailable, the legacy `navigator.platform` API SHOULD NOT be used instead and this attribute SHOULD be left unset in order for the values to be consistent.
-      The list of possible values is defined in the [W3C User-Agent Client Hints specification](https://wicg.github.io/ua-client-hints/#sec-ch-ua-platform). Note that some (but not all) of these values can overlap with values in the [`os.type` and `os.name` attributes](./os.md). However, for consistency, the values in the `browser.platform` attribute should capture the exact value that the user agent provides.
-    - Requires: Value type should be `String`
-    */
-    case browserPlatform = "browser.platform"
-    /**
-    A boolean that is true if the browser is running on a mobile device.
-
-    - Note: This value is intended to be taken from the [UA client hints API](https://wicg.github.io/ua-client-hints/#interface) (`navigator.userAgentData.mobile`). If unavailable, this attribute SHOULD be left unset.
-    - Requires: Value type should be `Bool`
-    */
-    case browserMobile = "browser.mobile"
-    /**
-    Preferred language of the user using the browser.
-
-    ~~~
-    // Examples
-    attributes[.browserLanguage] = "en"
-    attributes[.browserLanguage] = "en-US"
-    attributes[.browserLanguage] = "fr"
-    attributes[.browserLanguage] = "fr-FR"
-    ~~~
-
-    - Note: This value is intended to be taken from the Navigator API `navigator.language`.
-    - Requires: Value type should be `String`
-    */
-    case browserLanguage = "browser.language"
-    /**
-    Full user-agent string provided by the browser.
-
-    ~~~
-    // Examples
-    attributes[.userAgentOriginal] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.54 Safari/537.36"
-    ~~~
-
-    - Note: The user-agent value SHOULD be provided only from browsers that do not have a mechanism to retrieve brands and platform individually from the User-Agent Client Hints API. To retrieve the value, the legacy `navigator.userAgent` API can be used.
-    - Requires: Value type should be `String`
-    */
-    case userAgentOriginal = "user_agent.original"
-    /**
     Name of the cloud provider.
     - Requires: Value should be one of [`ResourceAttributes.CloudProviderValues`](x-source-tag://otelCloudProviderValues) (of type `String`)
     */
@@ -84,48 +24,16 @@ public enum ResourceAttributes: String {
     */
     case cloudAccountId = "cloud.account.id"
     /**
-    The geographical region the resource is running.
+    The geographical region the resource is running. Refer to your provider's docs to see the available regions, for example [Alibaba Cloud regions](https://www.alibabacloud.com/help/doc-detail/40654.htm), [AWS regions](https://aws.amazon.com/about-aws/global-infrastructure/regions_az/), [Azure regions](https://azure.microsoft.com/en-us/global-infrastructure/geographies/), or [Google Cloud regions](https://cloud.google.com/about/locations).
 
     ~~~
     // Examples
     attributes[.cloudRegion] = "us-central1"
     attributes[.cloudRegion] = "us-east-1"
     ~~~
-
-    - Note: Refer to your provider's docs to see the available regions, for example [Alibaba Cloud regions](https://www.alibabacloud.com/help/doc-detail/40654.htm), [AWS regions](https://aws.amazon.com/about-aws/global-infrastructure/regions_az/), [Azure regions](https://azure.microsoft.com/en-us/global-infrastructure/geographies/), [Google Cloud regions](https://cloud.google.com/about/locations), or [Tencent Cloud regions](https://www.tencentcloud.com/document/product/213/6091).
     - Requires: Value type should be `String`
     */
     case cloudRegion = "cloud.region"
-    /**
-    Cloud provider-specific native identifier of the monitored cloud resource (e.g. an [ARN](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html) on AWS, a [fully qualified resource ID](https://learn.microsoft.com/en-us/rest/api/resources/resources/get-by-id) on Azure, a [full resource name](https://cloud.google.com/apis/design/resource_names#full_resource_name) on GCP).
-
-    ~~~
-    // Examples
-    attributes[.cloudResourceId] = "arn:aws:lambda:REGION:ACCOUNT_ID:function:my-function"
-    attributes[.cloudResourceId] = "//run.googleapis.com/projects/PROJECT_ID/locations/LOCATION_ID/services/SERVICE_ID"
-    attributes[.cloudResourceId] = "/subscriptions/<SUBSCIPTION_GUID>/resourceGroups/<RG>/providers/Microsoft.Web/sites/<FUNCAPP>/functions/<FUNC>"
-    ~~~
-
-    - Note: On some cloud providers, it may not be possible to determine the full ID at startup,
-      so it may be necessary to set `cloud.resource_id` as a span attribute instead.
-
-      The exact value to use for `cloud.resource_id` depends on the cloud provider.
-      The following well-known definitions MUST be used if you set this attribute and they apply:
-
-      * **AWS Lambda:** The function [ARN](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html).
-        Take care not to use the "invoked ARN" directly but replace any
-        [alias suffix](https://docs.aws.amazon.com/lambda/latest/dg/configuration-aliases.html)
-        with the resolved function version, as the same runtime instance may be invokable with
-        multiple different aliases.
-      * **GCP:** The [URI of the resource](https://cloud.google.com/iam/docs/full-resource-names)
-      * **Azure:** The [Fully Qualified Resource ID](https://docs.microsoft.com/en-us/rest/api/resources/resources/get-by-id) of the invoked function,
-        *not* the function app, having the form
-        `/subscriptions/<SUBSCIPTION_GUID>/resourceGroups/<RG>/providers/Microsoft.Web/sites/<FUNCAPP>/functions/<FUNC>`.
-        This means that a span attribute MUST be used, as an Azure function app can host multiple functions that would usually share
-        a TracerProvider.
-    - Requires: Value type should be `String`
-    */
-    case cloudResourceId = "cloud.resource_id"
     /**
     Cloud regions often have multiple, isolated locations known as zones to increase availability. Availability zone represents the zone where the resource is running.
 
@@ -254,79 +162,7 @@ public enum ResourceAttributes: String {
     */
     case awsLogStreamArns = "aws.log.stream.arns"
     /**
-    The name of the Cloud Run [execution](https://cloud.google.com/run/docs/managing/job-executions) being run for the Job, as set by the [`CLOUD_RUN_EXECUTION`](https://cloud.google.com/run/docs/container-contract#jobs-env-vars) environment variable.
-
-    ~~~
-    // Examples
-    attributes[.gcpCloudRunJobExecution] = "job-name-xxxx"
-    attributes[.gcpCloudRunJobExecution] = "sample-job-mdw84"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case gcpCloudRunJobExecution = "gcp.cloud_run.job.execution"
-    /**
-    The index for a task within an execution as provided by the [`CLOUD_RUN_TASK_INDEX`](https://cloud.google.com/run/docs/container-contract#jobs-env-vars) environment variable.
-
-    ~~~
-    // Examplesattributes[.gcpCloudRunJobTaskIndex] = 0attributes[.gcpCloudRunJobTaskIndex] = 1
-    ~~~
-    - Requires: Value type should be `Int`
-    */
-    case gcpCloudRunJobTaskIndex = "gcp.cloud_run.job.task_index"
-    /**
-    The instance name of a GCE instance. This is the value provided by `host.name`, the visible name of the instance in the Cloud Console UI, and the prefix for the default hostname of the instance as defined by the [default internal DNS name](https://cloud.google.com/compute/docs/internal-dns#instance-fully-qualified-domain-names).
-
-    ~~~
-    // Examples
-    attributes[.gcpGceInstanceName] = "instance-1"
-    attributes[.gcpGceInstanceName] = "my-vm-name"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case gcpGceInstanceName = "gcp.gce.instance.name"
-    /**
-    The hostname of a GCE instance. This is the full value of the default or [custom hostname](https://cloud.google.com/compute/docs/instances/custom-hostname-vm).
-
-    ~~~
-    // Examples
-    attributes[.gcpGceInstanceHostname] = "my-host1234.example.com"
-    attributes[.gcpGceInstanceHostname] = "sample-vm.us-west1-b.c.my-project.internal"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case gcpGceInstanceHostname = "gcp.gce.instance.hostname"
-    /**
-    Time and date the release was created.
-
-    ~~~
-    // Examples
-    attributes[.herokuReleaseCreationTimestamp] = "2022-10-23T18:00:42Z"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case herokuReleaseCreationTimestamp = "heroku.release.creation_timestamp"
-    /**
-    Commit hash for the current release.
-
-    ~~~
-    // Examples
-    attributes[.herokuReleaseCommit] = "e6134959463efd8966b20e75b913cafe3f5ec"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case herokuReleaseCommit = "heroku.release.commit"
-    /**
-    Unique identifier for the application.
-
-    ~~~
-    // Examples
-    attributes[.herokuAppId] = "2daa2797-e42b-4624-9322-ec3f968df4da"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case herokuAppId = "heroku.app.id"
-    /**
-    Container name used by container runtime.
+    Container name.
 
     ~~~
     // Examples
@@ -378,51 +214,6 @@ public enum ResourceAttributes: String {
     */
     case containerImageTag = "container.image.tag"
     /**
-    Runtime specific image identifier. Usually a hash algorithm followed by a UUID.
-
-    ~~~
-    // Examples
-    attributes[.containerImageId] = "sha256:19c92d0a00d1b66d897bceaa7319bee0dd38a10a851c60bcec9474aa3f01e50f"
-    ~~~
-
-    - Note: Docker defines a sha256 of the image id; `container.image.id` corresponds to the `Image` field from the Docker container inspect [API](https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerInspect) endpoint.
-      K8s defines a link to the container registry repository with digest `"imageID": "registry.azurecr.io /namespace/service/dockerfile@sha256:bdeabd40c3a8a492eaf9e8e44d0ebbb84bac7ee25ac0cf8a7159d25f62555625"`.
-      OCI defines a digest of manifest.
-    - Requires: Value type should be `String`
-    */
-    case containerImageId = "container.image.id"
-    /**
-    The command used to run the container (i.e. the command name).
-
-    ~~~
-    // Examples
-    attributes[.containerCommand] = "otelcontribcol"
-    ~~~
-
-    - Note: If using embedded credentials or sensitive data, it is recommended to remove them to prevent potential leakage.
-    - Requires: Value type should be `String`
-    */
-    case containerCommand = "container.command"
-    /**
-    The full command run by the container as a single string representing the full command. [2].
-
-    ~~~
-    // Examples
-    attributes[.containerCommandLine] = "otelcontribcol --config config.yaml"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case containerCommandLine = "container.command_line"
-    /**
-    All the command arguments (including the command/executable itself) run by the container. [2].
-
-    ~~~
-    // Examplesattributes[.containerCommandArgs] = otelcontribcol, --config, config.yaml
-    ~~~
-    - Requires: Value type should be `[String]`
-    */
-    case containerCommandArgs = "container.command_args"
-    /**
     Name of the [deployment environment](https://en.wikipedia.org/wiki/Deployment_environment) (aka deployment tier).
 
     ~~~
@@ -472,46 +263,42 @@ public enum ResourceAttributes: String {
     */
     case deviceModelName = "device.model.name"
     /**
-    The name of the device manufacturer.
-
-    ~~~
-    // Examples
-    attributes[.deviceManufacturer] = "Apple"
-    attributes[.deviceManufacturer] = "Samsung"
-    ~~~
-
-    - Note: The Android OS provides this field via [Build](https://developer.android.com/reference/android/os/Build#MANUFACTURER). iOS apps SHOULD hardcode the value `Apple`.
-    - Requires: Value type should be `String`
-    */
-    case deviceManufacturer = "device.manufacturer"
-    /**
     The name of the single function that this runtime instance executes.
 
     ~~~
     // Examples
     attributes[.faasName] = "my-function"
-    attributes[.faasName] = "myazurefunctionapp/some-function-name"
     ~~~
 
-    - Note: This is the name of the function as configured/deployed on the FaaS
-      platform and is usually different from the name of the callback
-      function (which may be stored in the
-      [`code.namespace`/`code.function`](/docs/general/general-attributes.md#source-code-attributes)
-      span attributes).
-
-      For some cloud providers, the above definition is ambiguous. The following
-      definition of function name MUST be used for this attribute
-      (and consequently the span name) for the listed cloud providers/products:
-
-      * **Azure:**  The full name `<FUNCAPP>/<FUNC>`, i.e., function app name
-        followed by a forward slash followed by the function name (this form
-        can also be seen in the resource JSON for the function).
-        This means that a span attribute MUST be used, as an Azure function
-        app can host multiple functions that would usually share
-        a TracerProvider (see also the `cloud.resource_id` attribute).
+    - Note: This is the name of the function as configured/deployed on the FaaS platform and is usually different from the name of the callback function (which may be stored in the [`code.namespace`/`code.function`](../../trace/semantic_conventions/span-general.md#source-code-attributes) span attributes).
     - Requires: Value type should be `String`
     */
     case faasName = "faas.name"
+    /**
+    The unique ID of the single function that this runtime instance executes.
+
+    ~~~
+    // Examples
+    attributes[.faasId] = "arn:aws:lambda:us-west-2:123456789012:function:my-function"
+    ~~~
+
+    - Note: Depending on the cloud provider, use:
+
+      * **AWS Lambda:** The function [ARN](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html).
+      Take care not to use the "invoked ARN" directly but replace any
+      [alias suffix](https://docs.aws.amazon.com/lambda/latest/dg/configuration-aliases.html) with the resolved function version, as the same runtime instance may be invokable with multiple
+      different aliases.
+      * **GCP:** The [URI of the resource](https://cloud.google.com/iam/docs/full-resource-names)
+      * **Azure:** The [Fully Qualified Resource ID](https://docs.microsoft.com/en-us/rest/api/resources/resources/get-by-id).
+
+      On some providers, it may not be possible to determine the full ID at startup,
+      which is why this field cannot be made required. For example, on AWS the account ID
+      part of the ARN is not available without calling another AWS API
+      which may be deemed too slow for a short-running lambda function.
+      As an alternative, consider setting `faas.id` as a span attribute instead.
+    - Requires: Value type should be `String`
+    */
+    case faasId = "faas.id"
     /**
     The immutable version of the function being executed.
 
@@ -525,7 +312,7 @@ public enum ResourceAttributes: String {
 
       * **AWS Lambda:** The [function version](https://docs.aws.amazon.com/lambda/latest/dg/configuration-versions.html)
         (an integer represented as a decimal string).
-      * **Google Cloud Run (Services):** The [revision](https://cloud.google.com/run/docs/managing/revisions)
+      * **Google Cloud Run:** The [revision](https://cloud.google.com/run/docs/managing/revisions)
         (i.e., the function name plus the revision suffix).
       * **Google Cloud Functions:** The value of the
         [`K_REVISION` environment variable](https://cloud.google.com/functions/docs/env-var#runtime_environment_variables_set_automatically).
@@ -546,22 +333,22 @@ public enum ResourceAttributes: String {
     */
     case faasInstance = "faas.instance"
     /**
-    The amount of memory available to the serverless function converted to Bytes.
+    The amount of memory available to the serverless function in MiB.
 
     ~~~
-    // Examplesattributes[.faasMaxMemory] = 134217728
+    // Examplesattributes[.faasMaxMemory] = 128
     ~~~
 
-    - Note: It's recommended to set this attribute since e.g. too little memory can easily stop a Java AWS Lambda function from working correctly. On AWS Lambda, the environment variable `AWS_LAMBDA_FUNCTION_MEMORY_SIZE` provides this information (which must be multiplied by 1,048,576).
+    - Note: It's recommended to set this attribute since e.g. too little memory can easily stop a Java AWS Lambda function from working correctly. On AWS Lambda, the environment variable `AWS_LAMBDA_FUNCTION_MEMORY_SIZE` provides this information.
     - Requires: Value type should be `Int`
     */
     case faasMaxMemory = "faas.max_memory"
     /**
-    Unique host ID. For Cloud, this must be the instance_id assigned by the cloud provider. For non-containerized systems, this should be the `machine-id`. See the table below for the sources to use to determine the `machine-id` based on operating system.
+    Unique host ID. For Cloud, this must be the instance_id assigned by the cloud provider.
 
     ~~~
     // Examples
-    attributes[.hostId] = "fdbf79e8af94cb7f9e8df36789187052"
+    attributes[.hostId] = "opentelemetry-test"
     ~~~
     - Requires: Value type should be `String`
     */
@@ -603,7 +390,7 @@ public enum ResourceAttributes: String {
     */
     case hostImageName = "host.image.name"
     /**
-    VM image ID or host OS image ID. For Cloud, this value is from the provider.
+    VM image ID. For Cloud, this value is from the provider.
 
     ~~~
     // Examples
@@ -613,7 +400,7 @@ public enum ResourceAttributes: String {
     */
     case hostImageId = "host.image.id"
     /**
-    The version string of the VM image or host OS as defined in [Version Attributes](README.md#version-attributes).
+    The version string of the VM image as defined in [Version Attributes](README.md#version-attributes).
 
     ~~~
     // Examples
@@ -632,39 +419,6 @@ public enum ResourceAttributes: String {
     - Requires: Value type should be `String`
     */
     case k8sClusterName = "k8s.cluster.name"
-    /**
-    A pseudo-ID for the cluster, set to the UID of the `kube-system` namespace.
-
-    ~~~
-    // Examples
-    attributes[.k8sClusterUid] = "218fc5a9-a5f1-4b54-aa05-46717d0ab26d"
-    ~~~
-
-    - Note: K8s does not have support for obtaining a cluster ID. If this is ever
-      added, we will recommend collecting the `k8s.cluster.uid` through the
-      official APIs. In the meantime, we are able to use the `uid` of the
-      `kube-system` namespace as a proxy for cluster ID. Read on for the
-      rationale.
-
-      Every object created in a K8s cluster is assigned a distinct UID. The
-      `kube-system` namespace is used by Kubernetes itself and will exist
-      for the lifetime of the cluster. Using the `uid` of the `kube-system`
-      namespace is a reasonable proxy for the K8s ClusterID as it will only
-      change if the cluster is rebuilt. Furthermore, Kubernetes UIDs are
-      UUIDs as standardized by
-      [ISO/IEC 9834-8 and ITU-T X.667](https://www.itu.int/ITU-T/studygroups/com17/oid.html).
-      Which states:
-
-      > If generated according to one of the mechanisms defined in Rec.
-        ITU-T X.667 | ISO/IEC 9834-8, a UUID is either guaranteed to be
-        different from all other UUIDs generated before 3603 A.D., or is
-        extremely likely to be different (depending on the mechanism chosen).
-
-      Therefore, UIDs between clusters should be extremely unlikely to
-      conflict.
-    - Requires: Value type should be `String`
-    */
-    case k8sClusterUid = "k8s.cluster.uid"
     /**
     The name of the Node.
 
@@ -716,7 +470,7 @@ public enum ResourceAttributes: String {
     */
     case k8sPodName = "k8s.pod.name"
     /**
-    The name of the Container from Pod specification, must be unique within a Pod. Container runtime usually uses different globally unique name (`container.name`).
+    The name of the Container in a Pod template.
 
     ~~~
     // Examples
@@ -725,15 +479,6 @@ public enum ResourceAttributes: String {
     - Requires: Value type should be `String`
     */
     case k8sContainerName = "k8s.container.name"
-    /**
-    Number of times the container was restarted. This attribute can be used to identify a particular container (running or stopped) within a container spec.
-
-    ~~~
-    // Examplesattributes[.k8sContainerRestartCount] = 0attributes[.k8sContainerRestartCount] = 2
-    ~~~
-    - Requires: Value type should be `Int`
-    */
-    case k8sContainerRestartCount = "k8s.container.restart_count"
     /**
     The UID of the ReplicaSet.
 
@@ -883,7 +628,7 @@ public enum ResourceAttributes: String {
     */
     case osName = "os.name"
     /**
-    The version string of the operating system as defined in [Version Attributes](/docs/resource/README.md#version-attributes).
+    The version string of the operating system as defined in [Version Attributes](../../resource/semantic_conventions/README.md#version-attributes).
 
     ~~~
     // Examples
@@ -902,15 +647,6 @@ public enum ResourceAttributes: String {
     - Requires: Value type should be `Int`
     */
     case processPid = "process.pid"
-    /**
-    Parent Process identifier (PID).
-
-    ~~~
-    // Examplesattributes[.processParentPid] = 111
-    ~~~
-    - Requires: Value type should be `Int`
-    */
-    case processParentPid = "process.parent_pid"
     /**
     The name of the process executable. On Linux based systems, can be set to the `Name` in `proc/[pid]/status`. On Windows, can be set to the base name of `GetProcessImageFileNameW`.
 
@@ -1013,17 +749,6 @@ public enum ResourceAttributes: String {
     */
     case serviceName = "service.name"
     /**
-    The version string of the service API or implementation. The format is not defined by these conventions.
-
-    ~~~
-    // Examples
-    attributes[.serviceVersion] = "2.0.0"
-    attributes[.serviceVersion] = "a01dbef8a"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case serviceVersion = "service.version"
-    /**
     A namespace for `service.name`.
 
     ~~~
@@ -1040,7 +765,6 @@ public enum ResourceAttributes: String {
 
     ~~~
     // Examples
-    attributes[.serviceInstanceId] = "my-k8s-pod-deployment-1"
     attributes[.serviceInstanceId] = "627cc493-f310-47de-96bd-71410b7dec09"
     ~~~
 
@@ -1049,19 +773,22 @@ public enum ResourceAttributes: String {
     */
     case serviceInstanceId = "service.instance.id"
     /**
+    The version string of the service API or implementation.
+
+    ~~~
+    // Examples
+    attributes[.serviceVersion] = "2.0.0"
+    ~~~
+    - Requires: Value type should be `String`
+    */
+    case serviceVersion = "service.version"
+    /**
     The name of the telemetry SDK as defined above.
 
     ~~~
     // Examples
     attributes[.telemetrySdkName] = "opentelemetry"
     ~~~
-
-    - Note: The OpenTelemetry SDK MUST set the `telemetry.sdk.name` attribute to `opentelemetry`.
-      If another SDK, like a fork or a vendor-provided implementation, is used, this SDK MUST set the
-      `telemetry.sdk.name` attribute to the fully-qualified class or module name of this SDK's main entry point
-      or another suitable identifier depending on the language.
-      The identifier `opentelemetry` is reserved and MUST NOT be used in this case.
-      All custom identifiers SHOULD be stable across different versions of an implementation.
     - Requires: Value type should be `String`
     */
     case telemetrySdkName = "telemetry.sdk.name"
@@ -1120,46 +847,6 @@ public enum ResourceAttributes: String {
     - Requires: Value type should be `String`
     */
     case webengineDescription = "webengine.description"
-    /**
-    The name of the instrumentation scope - (`InstrumentationScope.Name` in OTLP).
-
-    ~~~
-    // Examples
-    attributes[.otelScopeName] = "io.opentelemetry.contrib.mongodb"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case otelScopeName = "otel.scope.name"
-    /**
-    The version of the instrumentation scope - (`InstrumentationScope.Version` in OTLP).
-
-    ~~~
-    // Examples
-    attributes[.otelScopeVersion] = "1.0.0"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case otelScopeVersion = "otel.scope.version"
-    /**
-    Deprecated, use the `otel.scope.name` attribute.
-
-    ~~~
-    // Examples
-    attributes[.otelLibraryName] = "io.opentelemetry.contrib.mongodb"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case otelLibraryName = "otel.library.name"
-    /**
-    Deprecated, use the `otel.scope.version` attribute.
-
-    ~~~
-    // Examples
-    attributes[.otelLibraryVersion] = "1.0.0"
-    ~~~
-    - Requires: Value type should be `String`
-    */
-    case otelLibraryVersion = "otel.library.version"
     
     /**
     Name of the cloud provider.
@@ -1182,18 +869,6 @@ public enum ResourceAttributes: String {
         Google Cloud Platform.
         */
         public static let gcp = CloudProviderValues("gcp")
-        /**
-        Heroku Platform as a Service.
-        */
-        public static let heroku = CloudProviderValues("heroku")
-        /**
-        IBM Cloud.
-        */
-        public static let ibmCloud = CloudProviderValues("ibm_cloud")
-        /**
-        Tencent Cloud.
-        */
-        public static let tencentCloud = CloudProviderValues("tencent_cloud")
 
         internal let value: String
 
@@ -1220,10 +895,6 @@ public enum ResourceAttributes: String {
         */
         public static let alibabaCloudFc = CloudPlatformValues("alibaba_cloud_fc")
         /**
-        Red Hat OpenShift on Alibaba Cloud.
-        */
-        public static let alibabaCloudOpenshift = CloudPlatformValues("alibaba_cloud_openshift")
-        /**
         AWS Elastic Compute Cloud.
         */
         public static let awsEc2 = CloudPlatformValues("aws_ec2")
@@ -1243,14 +914,6 @@ public enum ResourceAttributes: String {
         AWS Elastic Beanstalk.
         */
         public static let awsElasticBeanstalk = CloudPlatformValues("aws_elastic_beanstalk")
-        /**
-        AWS App Runner.
-        */
-        public static let awsAppRunner = CloudPlatformValues("aws_app_runner")
-        /**
-        Red Hat OpenShift on AWS (ROSA).
-        */
-        public static let awsOpenshift = CloudPlatformValues("aws_openshift")
         /**
         Azure Virtual Machines.
         */
@@ -1272,14 +935,6 @@ public enum ResourceAttributes: String {
         */
         public static let azureAppService = CloudPlatformValues("azure_app_service")
         /**
-        Azure Red Hat OpenShift.
-        */
-        public static let azureOpenshift = CloudPlatformValues("azure_openshift")
-        /**
-        Google Bare Metal Solution (BMS).
-        */
-        public static let gcpBareMetalSolution = CloudPlatformValues("gcp_bare_metal_solution")
-        /**
         Google Cloud Compute Engine (GCE).
         */
         public static let gcpComputeEngine = CloudPlatformValues("gcp_compute_engine")
@@ -1299,26 +954,6 @@ public enum ResourceAttributes: String {
         Google Cloud App Engine (GAE).
         */
         public static let gcpAppEngine = CloudPlatformValues("gcp_app_engine")
-        /**
-        Red Hat OpenShift on Google Cloud.
-        */
-        public static let gcpOpenshift = CloudPlatformValues("gcp_openshift")
-        /**
-        Red Hat OpenShift on IBM Cloud.
-        */
-        public static let ibmCloudOpenshift = CloudPlatformValues("ibm_cloud_openshift")
-        /**
-        Tencent Cloud Cloud Virtual Machine (CVM).
-        */
-        public static let tencentCloudCvm = CloudPlatformValues("tencent_cloud_cvm")
-        /**
-        Tencent Cloud Elastic Kubernetes Service (EKS).
-        */
-        public static let tencentCloudEks = CloudPlatformValues("tencent_cloud_eks")
-        /**
-        Tencent Cloud Serverless Cloud Function (SCF).
-        */
-        public static let tencentCloudScf = CloudPlatformValues("tencent_cloud_scf")
 
         internal let value: String
 
@@ -1375,10 +1010,6 @@ public enum ResourceAttributes: String {
         64-bit PowerPC.
         */
         public static let ppc64 = HostArchValues("ppc64")
-        /**
-        IBM z/Architecture.
-        */
-        public static let s390x = HostArchValues("s390x")
         /**
         32-bit x86.
         */
@@ -1437,7 +1068,7 @@ public enum ResourceAttributes: String {
         */
         public static let aix = OsTypeValues("aix")
         /**
-        SunOS, Oracle Solaris.
+        Oracle Solaris.
         */
         public static let solaris = OsTypeValues("solaris")
         /**
@@ -1498,17 +1129,13 @@ public enum ResourceAttributes: String {
         */
         public static let ruby = TelemetrySdkLanguageValues("ruby")
         /**
-        rust.
+        webjs.
         */
-        public static let rust = TelemetrySdkLanguageValues("rust")
+        public static let webjs = TelemetrySdkLanguageValues("webjs")
         /**
         swift.
         */
         public static let swift = TelemetrySdkLanguageValues("swift")
-        /**
-        webjs.
-        */
-        public static let webjs = TelemetrySdkLanguageValues("webjs")
 
         internal let value: String
 

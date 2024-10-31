@@ -25,10 +25,9 @@ class DefaultLoggerTests : XCTestCase {
         XCTAssertNoThrow(defaultLogger.logRecordBuilder()
             .setSpanContext(spanContext)
             .setAttributes([:])
-            .setTimestamp(Date())
             .setObservedTimestamp(Date())
             .setSeverity(.debug)
-            .setBody(AttributeValue.string("hello, world"))
+            .setBody("hello, world")
             .emit())
         
         XCTAssertNoThrow(defaultLogger.eventBuilder(name: "Event").emit())
